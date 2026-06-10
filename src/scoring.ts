@@ -230,7 +230,7 @@ export function calculateMatchResults(
     playerId: winnerId,
     rank: 1,
     scoreLeft: null,
-    xpBefore: winnerCareerXPBefore,
+    xpBefore: playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(winnerId) ?? 0) : winnerCareerXPBefore,
     xpEarned: winnerXP,
     finishType,
     medals: winnerMedals,
@@ -298,7 +298,7 @@ export function calculateMatchResults(
       playerId: loser.playerId,
       rank,
       scoreLeft: loser.scoreLeft,
-      xpBefore: loserCareerXPsBefore.get(loser.playerId) || 0,
+      xpBefore: playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(loser.playerId) ?? 0) : (loserCareerXPsBefore.get(loser.playerId) || 0),
       xpEarned: xp,
       medals,
     });

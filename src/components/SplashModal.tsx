@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Info, X, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
-const SPLASH_VERSION = "2.02";
+export const SPLASH_VERSION = "2.10";
 const STORAGE_KEY = "dartos_splash_seen_v2";
 
 interface SplashModalProps {
@@ -128,6 +128,38 @@ export default function SplashModal({ forceOpen = false, onClose }: SplashModalP
             <div className="flex justify-between items-center">
               <span className="text-purple-400 font-semibold font-mono tracking-wider">🏅 Badge Super Jackpot :</span>
               <span className="text-white">Médailles de tombola exclusives (ex: 🍀🎉)</span>
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      emoji: "⚖️",
+      title: "Maj d'Équilibrage",
+      sub: "L'XP plus juste et tactique !",
+      content: (
+        <div className="space-y-2.5 prose prose-invert max-w-sm mx-auto text-xs text-slate-300">
+          <p className="text-center">
+            Cette version apporte des équilibrages majeurs sur les calculs d'XP :
+          </p>
+          <div className="bg-[#111114] p-3 rounded-none border border-[#2A2A2E] flex flex-col gap-2.5 shadow-inner text-left">
+            <div className="flex items-start gap-2">
+              <span className="text-amber-400">🐉</span>
+              <div>
+                <strong className="text-white">Tueur de Géants & Phénix</strong> : Comparés à l'<strong>XP de la saison</strong> (et non plus de la carrière). Plus représentatif de la forme actuelle de vos adversaires !
+              </div>
+            </div>
+            <div className="flex items-start gap-2 border-t border-slate-800/40 pt-2">
+              <span className="text-emerald-400">📈</span>
+              <div>
+                <strong className="text-white">Bonus de Niveau (+25%)</strong> : Battre un joueur mieux classé à la saison offre d'immenses gains de <strong className="text-emerald-400 font-mono">+25% par palier de différence</strong> (ex: Niv 1 bat Niv 3 = +50%).
+              </div>
+            </div>
+            <div className="flex items-start gap-2 border-t border-slate-800/40 pt-2">
+              <span className="text-purple-400">🥉</span>
+              <div>
+                <strong className="text-white">Médaille Benjamin plus rare</strong> : Réservée au dernier de la partie s'il a démarré avec le plus faible XP parmi les participants du match ET s'il finit à moins de 50 pts restants !
+              </div>
             </div>
           </div>
         </div>

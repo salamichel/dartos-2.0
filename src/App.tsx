@@ -5,7 +5,7 @@ import { dbStore } from "./dbStore";
 import { Player, Season, Match, Guild } from "./types";
 import { getMedalIcon, getMedalTitle } from "./scoring";
 
-import SplashModal from "./components/SplashModal";
+import SplashModal, { SPLASH_VERSION } from "./components/SplashModal";
 import SlotMachineLottery from "./components/SlotMachineLottery";
 import LeaderboardTab from "./components/LeaderboardTab";
 import MatchEntryTab from "./components/MatchEntryTab";
@@ -242,7 +242,7 @@ export default function App() {
               <h1 className="text-3xl font-black font-display tracking-tighter text-white select-none uppercase">
                 D<span className="text-[#3dc7ff]">A</span>R<span className="text-[#3dc7ff]">TOS</span><span className="text-cosmic-accent font-extrabold text-glow">.</span>
               </h1>
-              <span className="text-[10px] uppercase tracking-widest text-[#66666E] border border-slate-800 px-2 py-0.5 ml-1 bg-slate-950 rounded">v2.02</span>
+              <span className="text-[10px] uppercase tracking-widest text-[#66666E] border border-slate-800 px-2 py-0.5 ml-1 bg-slate-950 rounded">v{SPLASH_VERSION}</span>
             </div>
           </div>
 
