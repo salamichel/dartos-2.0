@@ -296,10 +296,10 @@ export default function SeasonsTab({ seasons, onSeasonsUpdated, onShowToast, onS
               />
               <div className="space-y-0.5">
                 <label htmlFor="season-bonus-rang" className="text-xs font-bold text-white cursor-pointer select-none">
-                  ⚖️ Bonus vainqueur proportionnel au niveau (-25% par palier d'écart avec le perdant)
+                  ⚖️ Ajustement XP vainqueur selon l'écart de niveau (-25% / +25% par palier)
                 </label>
                 <p className="text-[10px] text-slate-[#55555F]">
-                  Si activé, l'XP obtenue par adversaire battu décroît proportionnellement si le niveau du vainqueur est supérieur.
+                  Si activé, applique un malus de -25% par palier d'écart si le vainqueur est d'un niveau supérieur au vaincu, et un bonus de +25% par palier s'il est d'un niveau inférieur.
                 </p>
               </div>
             </div>

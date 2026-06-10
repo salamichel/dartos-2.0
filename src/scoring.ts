@@ -171,8 +171,16 @@ export function calculateMatchResults(
     const winnerTier = getLevelIndex(winnerCareerXPBefore);
     xpFromLosers = losers.reduce((sum, l) => {
       const loserXP = loserCareerXPsBefore.get(l.playerId) || 0;
-      const tierDiff = Math.max(0, winnerTier - getLevelIndex(loserXP));
-      const factor = Math.max(0, 1 - 0.25 * tierDiff);
+      const loserTier = getLevelIndex(loserXP);
+      const tierDiff = winnerTier - loserTier;
+      let factor = 1.0;
+      if (tierDiff > 0) {
+        // Stronger winner -> malus of -25% per tier difference
+        factor = Math.max(0, 1 - 0.25 * tierDiff);
+      } else if (tierDiff < 0) {
+        // Weaker winner -> bonus of +25% per tier difference
+        factor = 1 + 0.25 * Math.abs(tierDiff);
+      }
       return sum + Math.floor(config.xpPerDefeatedOpponent * factor);
     }, 0);
   } else {

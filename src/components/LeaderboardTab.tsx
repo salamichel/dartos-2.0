@@ -697,7 +697,7 @@ export default function LeaderboardTab({
               </p>
               <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400">
                 <li>Double Fermeture : +{config.xpBonusDouble} XP | Triple Fermeture : +{config.xpBonusTriple} XP.</li>
-                <li>Pondéré par Palier : Diminue si l'adversaire battu est d'un niveau très inférieur (-25% par palier d'écart).</li>
+                <li>Ajustement par Palier : Malus de -25% par palier d'écart si le vainqueur est d'un niveau supérieur, et bonus de +25% par palier s'il est d'un niveau inférieur.</li>
               </ul>
             </div>
             <div className="space-y-1.5 border-t border-slate-800/50 pt-2.5">
