@@ -342,24 +342,6 @@ export default function LeaderboardTab({
             ))}
           </select>
 
-          {/* Guild select filter */}
-          <select
-            value={selectedGuildId === "none" ? "none" : selectedGuildId}
-            onChange={(e) => {
-              const val = e.target.value;
-              setSelectedGuildId(val === "" ? "" : val === "none" ? "none" : Number(val));
-            }}
-            className="bg-slate-950 border border-[#2A2A2E] text-slate-350 font-bold text-xs px-3 py-2 rounded-none focus:border-cosmic-accent/60 focus:outline-none cursor-pointer"
-          >
-            <option value="">🔰 Toutes les Alliances</option>
-            {guilds.map(g => (
-              <option key={g.id} value={g.id}>
-                {g.badgeIcon} {g.name}
-              </option>
-            ))}
-            <option value="none">👤 Sans Alliance</option>
-          </select>
-
           {selectedSeasonId && (
             <button
               onClick={() => onRecalculateSeason(selectedSeasonId)}
@@ -481,6 +463,24 @@ export default function LeaderboardTab({
             </div>
           </div>
 
+          {/* Guild select filter */}
+          <select
+            value={selectedGuildId === "none" ? "none" : selectedGuildId}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedGuildId(val === "" ? "" : val === "none" ? "none" : Number(val));
+            }}
+            className="bg-slate-950 border border-[#2A2A2E] text-slate-350 font-bold text-xs px-3 py-2 rounded-none focus:border-cosmic-accent/60 focus:outline-none cursor-pointer"
+          >
+            <option value="">🔰 Toutes les Alliances</option>
+            {guilds.map(g => (
+              <option key={g.id} value={g.id}>
+                {g.badgeIcon} {g.name}
+              </option>
+            ))}
+            <option value="none">👤 Sans Alliance</option>
+          </select>
+          
           {/* Toggle pill buttons */}
           <div id="chart-player-filters" className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-900/50">
             {leaderboard.map((row) => {
