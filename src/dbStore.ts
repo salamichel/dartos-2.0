@@ -3,13 +3,15 @@ import { getPlayersCareerXPs, getSeasonPlayerXPs, calculateGuildRank, calculateM
 
 // Firebase imports
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, onSnapshot, setDoc, deleteDoc, getDocFromServer } from "firebase/firestore";
+import { collection, doc, onSnapshot, setDoc, deleteDoc, getDocFromServer, initializeFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import firebaseConfig from "../firebase-applet-config.json";
 
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 // Error handling types and helper as specified by instructions

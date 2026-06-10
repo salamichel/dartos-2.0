@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Trophy, RefreshCw, Layers, Calculator, Play, Info, HelpCircle, TrendingUp, Eye } from "lucide-react";
 import { motion } from "motion/react";
 import { Player, Season, Match, Guild } from "../types";
-import { LEVELS, getLevel, getLevelIndex, getMedalIcon, getMedalTitle, isPalindrome } from "../scoring";
+import { LEVELS, getLevel, getLevelIndex, getMedalIcon, getMedalTitle, isPalindrome, SEASON_DEFAULTS } from "../scoring";
 import PlayerDetailModal from "./PlayerDetailModal";
 import {
   ResponsiveContainer,
@@ -51,6 +51,82 @@ export default function LeaderboardTab({
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [visiblePlayers, setVisiblePlayers] = useState<string[]>([]);
   const [selectedGuildId, setSelectedGuildId] = useState<number | "none" | "">("");
+
+  // Find currently active or selected season configuration
+  const currentSeason = selectedSeasonId !== ""
+    ? seasons.find(s => s.id === selectedSeasonId)
+    : (seasons.find(s => s.endedAt === null) || seasons[seasons.length - 1]);
+
+  const config = currentSeason || SEASON_DEFAULTS;
+
+  const allSeasonBadges = [
+    {
+      id: "TUEUR_DE_GEANTS",
+      name: "TUEUR DE GÉANTS",
+      emoji: "⚔️🏆",
+      xp: config.xpBonusTueurDeGeants,
+      description: "Attribué au vainqueur s'il bat un joueur d'un palier/niveau strictement supérieur.",
+      category: "Vainqueur"
+    },
+    {
+      id: "PHENIX",
+      name: "PHÉNIX",
+      emoji: "🔥",
+      xp: config.xpBonusPhenix,
+      description: "Attribué au vainqueur s'il a démarré la partie avec un XP carrière strictement inférieur à celui de TOUS les autres joueurs.",
+      category: "Vainqueur"
+    },
+    {
+      id: "SERIAL_WINNER",
+      name: "SERIAL WINNER",
+      emoji: "🔥🔥",
+      xp: config.xpBonusSerialWinner,
+      description: "Attribué au vainqueur s'il enchaîne sa 3ème victoire de suite (ou plus) au cours de la saison.",
+      category: "Vainqueur"
+    },
+    {
+      id: "POULIDOR",
+      name: "POULIDOR",
+      emoji: "🥈",
+      xp: config.xpBonusPoulidor,
+      description: "Finit deuxième du match avec un score restant inférieur à 10.",
+      category: "Survivant"
+    },
+    {
+      id: "JACKPOT",
+      name: "JACKPOT",
+      emoji: "🎰",
+      xp: config.xpBonusJackpot,
+      description: "Finit la partie avec un score restant palindrome (11, 22, 33, etc.).",
+      category: "Survivant"
+    },
+    {
+      id: "EGALITE",
+      name: "ÉGALITÉ",
+      emoji: "🤝",
+      xp: config.xpBonusEgalite,
+      description: "Finit la partie avec le même score restant qu'un autre survivant.",
+      category: "Survivant"
+    },
+    {
+      id: "BENJAMIN",
+      name: "BENJAMIN",
+      emoji: "👶",
+      xp: config.xpBonusBenjamin,
+      description: "Dernier de la partie, ou dernier au classement XP de la saison avant le match, ou s'il termine avec moins de 50 points restants.",
+      category: "Survivant"
+    },
+    {
+      id: "LOTTERY_WINNER",
+      name: "TOMBOLA / LOTTERY",
+      emoji: "🍀",
+      xp: config.xpBonusLottery,
+      description: "Gagnant du tirage instantané de la tombola par machine à sous.",
+      category: "Spécial"
+    }
+  ];
+
+  const activeBadges = allSeasonBadges.filter(b => b.xp > 0);
 
   // Pre-seed visible players on chart to be the top 4
   useEffect(() => {
@@ -617,25 +693,73 @@ export default function LeaderboardTab({
             <div className="space-y-1.5">
               <h4 className="font-bold text-[#FF3E3E] text-xs">🏆 Système RPG Vainqueur (301 Sudden Death)</h4>
               <p className="text-slate-405 leading-relaxed text-[11px]">
-                XP = (Contre-adversaires) + (Bonus de Fermeture) + (Somme scores restants x Vampire Mlt) + (Badges d'exploit).
+                XP = (+{config.xpPerDefeatedOpponent} XP par adversaire battu) + (Bonus de Fermeture) + (Somme des scores restants des perdants x {config.xpVampireMultiplier}) + (Badges d'exploit).
               </p>
               <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400">
-                <li>Double Fermeture : +50 XP | Triple Fermeture : +100 XP.</li>
+                <li>Double Fermeture : +{config.xpBonusDouble} XP | Triple Fermeture : +{config.xpBonusTriple} XP.</li>
                 <li>Pondéré par Palier : Diminue si l'adversaire battu est d'un niveau très inférieur (-25% par palier d'écart).</li>
               </ul>
             </div>
             <div className="space-y-1.5 border-t border-slate-800/50 pt-2.5">
               <h4 className="font-bold text-white text-xs">💀 Survivants</h4>
               <p className="text-slate-400 leading-relaxed text-[11px]">
-                XP de base + Badges spéciaux :
+                XP de base (+{config.xpSurvivorBase} XP)
               </p>
-              <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400">
-                <li>🥈 <strong>POULIDOR</strong> : +15 XP (finit second, score restant inférieur à 10).</li>
-                <li>🎰 <strong>JACKPOT</strong> : +20 XP (finit à un score palindrome : 11, 22, 33, etc.).</li>
-                <li>🤝 <strong>ÉGALITÉ</strong> : +10 XP (même score qu'un autre survivant).</li>
-                <li>👶 <strong>BENJAMIN</strong> : +15 XP (attribué si dernier de la partie, ou si joueur est dernier au classement XP de la saison, ou s'il termine avec moins de 50 pts restants).</li>
-              </ul>
             </div>
+
+            {activeBadges.some(b => b.category === "Vainqueur") && (
+              <div className="space-y-2 border-t border-slate-800/55 pt-3">
+                <h4 className="font-bold text-[#FF3E3E] text-xs uppercase tracking-wider flex items-center gap-1">
+                  ⚔️ Badges Vainqueur (Actifs)
+                </h4>
+                <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-slate-400">
+                  {activeBadges
+                    .filter(b => b.category === "Vainqueur")
+                    .map(b => (
+                      <li key={b.id} className="leading-snug">
+                        <span className="text-white font-medium">{b.emoji} {b.name}</span> :{" "}
+                        <span className="text-emerald-400 font-bold">+{b.xp} XP</span> — {b.description}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
+
+            {activeBadges.some(b => b.category === "Survivant") && (
+              <div className="space-y-2 border-t border-slate-800/55 pt-3">
+                <h4 className="font-bold text-cosmic-accent text-xs uppercase tracking-wider flex items-center gap-1">
+                  🛡️ Badges Survivant (Actifs)
+                </h4>
+                <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-slate-400">
+                  {activeBadges
+                    .filter(b => b.category === "Survivant")
+                    .map(b => (
+                      <li key={b.id} className="leading-snug">
+                        <span className="text-white font-medium">{b.emoji} {b.name}</span> :{" "}
+                        <span className="text-emerald-400 font-bold">+{b.xp} XP</span> — {b.description}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
+
+            {activeBadges.some(b => b.category === "Spécial") && (
+              <div className="space-y-2 border-t border-slate-800/55 pt-3">
+                <h4 className="font-bold text-yellow-500 text-xs uppercase tracking-wider flex items-center gap-1">
+                  🍀 Badges Spéciaux (Actifs)
+                </h4>
+                <ul className="list-disc pl-4 space-y-1.5 text-[11px] text-slate-400">
+                  {activeBadges
+                    .filter(b => b.category === "Spécial")
+                    .map(b => (
+                      <li key={b.id} className="leading-snug">
+                        <span className="text-white font-medium">{b.emoji} {b.name}</span> :{" "}
+                        <span className="text-emerald-400 font-bold">+{b.xp} XP</span> — {b.description}
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
           </div>
         </details>
       </div>
