@@ -79,7 +79,7 @@ export function getMedalTitle(m: string): string {
     case "TUEUR_DE_GEANTS": return "Tueur de Géants (Bat un plus haut niveau)";
     case "PHENIX": return "Phénix (Outsider qui gagne)";
     case "SERIAL_WINNER": return "Serial Winner (3ème victoire d'affilée)";
-    case "BENJAMIN": return "Benjamin (Dernier de la partie, dernier au classement XP ou < 50 pts)";
+    case "BENJAMIN": return "Benjamin (Dernier de la partie s'il est dernier au classement XP ou < 50 pts)";
     default: return m;
   }
 }
@@ -279,7 +279,7 @@ export function calculateMatchResults(
       : false;
     const isTermineMoinsDe50 = loser.scoreLeft < 50;
 
-    if (isDernierDeLaPartie || isDernierClassementXpSaison || isTermineMoinsDe50) {
+    if (isDernierDeLaPartie && isDernierClassementXpSaison && isTermineMoinsDe50) {
       xp += config.xpBonusBenjamin;
       medals.push("BENJAMIN");
     }

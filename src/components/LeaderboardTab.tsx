@@ -113,7 +113,7 @@ export default function LeaderboardTab({
       name: "BENJAMIN",
       emoji: "👶",
       xp: config.xpBonusBenjamin,
-      description: "Dernier de la partie, ou dernier au classement XP de la saison avant le match, ou s'il termine avec moins de 50 points restants.",
+      description: "Dernier de la partie, s'il a démarré dernier au classement XP de la saison avant le match et s'il termine avec moins de 50 points restants.",
       category: "Survivant"
     },
     {
