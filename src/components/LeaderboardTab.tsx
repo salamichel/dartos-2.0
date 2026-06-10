@@ -65,7 +65,7 @@ export default function LeaderboardTab({
       name: "TUEUR DE GÉANTS",
       emoji: "⚔️🏆",
       xp: config.xpBonusTueurDeGeants,
-      description: "Attribué au vainqueur s'il bat un joueur d'un palier/niveau strictement supérieur.",
+      description: "Attribué au vainqueur s'il bat un joueur d'un palier/niveau de saison strictement supérieur.",
       category: "Vainqueur"
     },
     {
@@ -73,7 +73,7 @@ export default function LeaderboardTab({
       name: "PHÉNIX",
       emoji: "🔥",
       xp: config.xpBonusPhenix,
-      description: "Attribué au vainqueur s'il a démarré la partie avec un XP carrière strictement inférieur à celui de TOUS les autres joueurs.",
+      description: "Attribué au vainqueur s'il a démarré la partie avec un XP de saison strictement inférieur à celui de TOUS les autres joueurs.",
       category: "Vainqueur"
     },
     {

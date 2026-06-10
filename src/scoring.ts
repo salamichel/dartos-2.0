@@ -168,10 +168,11 @@ export function calculateMatchResults(
   // Winner XP from opponents
   let xpFromLosers = 0;
   if (config.bonusVainqueurParRang) {
-    const winnerTier = getLevelIndex(winnerCareerXPBefore);
+    const winnerSeasonXP = playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(winnerId) ?? 0) : winnerCareerXPBefore;
+    const winnerTier = getLevelIndex(winnerSeasonXP);
     xpFromLosers = losers.reduce((sum, l) => {
-      const loserXP = loserCareerXPsBefore.get(l.playerId) || 0;
-      const loserTier = getLevelIndex(loserXP);
+      const loserSeasonXP = playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(l.playerId) ?? 0) : (loserCareerXPsBefore.get(l.playerId) || 0);
+      const loserTier = getLevelIndex(loserSeasonXP);
       const tierDiff = winnerTier - loserTier;
       let factor = 1.0;
       if (tierDiff > 0) {
@@ -198,20 +199,22 @@ export function calculateMatchResults(
   let winnerXP = xpFromLosers + finishBonus + vampireXP;
   const winnerMedals: string[] = [];
 
-  // 1. Tueur de Géants: Winner level < at least one loser level
-  const winnerTier = getLevelIndex(winnerCareerXPBefore);
+  // 1. Tueur de Géants: Winner level < at least one loser level (based on season XP if available)
+  const winnerSeasonXPForGiant = playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(winnerId) ?? 0) : winnerCareerXPBefore;
+  const winnerTierForGiant = getLevelIndex(winnerSeasonXPForGiant);
   const hasGiantOpponent = losers.some(l => {
-    const opponentXP = loserCareerXPsBefore.get(l.playerId) || 0;
-    return getLevelIndex(opponentXP) > winnerTier;
+    const opponentSeasonXP = playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(l.playerId) ?? 0) : (loserCareerXPsBefore.get(l.playerId) || 0);
+    return getLevelIndex(opponentSeasonXP) > winnerTierForGiant;
   });
   if (hasGiantOpponent) {
     winnerXP += config.xpBonusTueurDeGeants;
     winnerMedals.push("TUEUR_DE_GEANTS");
   }
 
-  // 2. Phénix: Winner had strictly LESS starting XP than all other players
-  const otherXPs = losers.map(l => loserCareerXPsBefore.get(l.playerId) || 0);
-  if (otherXPs.length > 0 && winnerCareerXPBefore < Math.min(...otherXPs)) {
+  // 2. Phénix: Winner had strictly LESS starting XP than all other players (based on season XP if available)
+  const winnerSeasonXPForPhenix = playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(winnerId) ?? 0) : winnerCareerXPBefore;
+  const otherSeasonXPs = losers.map(l => playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(l.playerId) ?? 0) : (loserCareerXPsBefore.get(l.playerId) || 0));
+  if (otherSeasonXPs.length > 0 && winnerSeasonXPForPhenix < Math.min(...otherSeasonXPs)) {
     winnerXP += config.xpBonusPhenix;
     winnerMedals.push("PHENIX");
   }
