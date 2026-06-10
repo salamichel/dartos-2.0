@@ -240,10 +240,19 @@ export function calculateMatchResults(
   const scoreCounts = new Map<number, number>();
   losers.forEach(l => scoreCounts.set(l.scoreLeft, (scoreCounts.get(l.scoreLeft) || 0) + 1));
 
-  // Minimum season XP among all players in the season
-  const minSeasonXP = playerSeasonXPsBefore && playerSeasonXPsBefore.size > 0
-    ? Math.min(...Array.from(playerSeasonXPsBefore.values()))
-    : 0;
+  // Minimum XP among the match participants before this match
+  const matchPlayerIds = [winnerId, ...losers.map(l => l.playerId)];
+  const getPlayerXPBefore = (pid: number) => {
+    if (playerSeasonXPsBefore) {
+      return playerSeasonXPsBefore.get(pid) ?? 0;
+    }
+    if (pid === winnerId) {
+      return winnerCareerXPBefore;
+    }
+    return loserCareerXPsBefore.get(pid) || 0;
+  };
+  const matchXPs = matchPlayerIds.map(pid => getPlayerXPBefore(pid));
+  const minMatchXP = matchXPs.length > 0 ? Math.min(...matchXPs) : 0;
 
   sortedLosers.forEach((loser, index) => {
     const rank = index + 2;
@@ -270,16 +279,17 @@ export function calculateMatchResults(
 
     // Benjamin:
     // - si dernier de la partie
-    // - si joueur est dernier en terme de classement xp sur la saison
+    // - si joueur est le plus faible en terme d'XP parmis les participants de la partie
     // - si termine avec moins de 50pts
     const totalLosersInMatch = sortedLosers.length;
     const isDernierDeLaPartie = rank === totalLosersInMatch + 1;
-    const isDernierClassementXpSaison = playerSeasonXPsBefore
-      ? (playerSeasonXPsBefore.get(loser.playerId) || 0) <= minSeasonXP
-      : false;
+    const playerXPBefore = playerSeasonXPsBefore
+      ? (playerSeasonXPsBefore.get(loser.playerId) ?? 0)
+      : (loserCareerXPsBefore.get(loser.playerId) || 0);
+    const isDernierClassementXpDeLaPartie = playerXPBefore <= minMatchXP;
     const isTermineMoinsDe50 = loser.scoreLeft < 50;
 
-    if (isDernierDeLaPartie && isDernierClassementXpSaison && isTermineMoinsDe50) {
+    if (isDernierDeLaPartie && isDernierClassementXpDeLaPartie && isTermineMoinsDe50) {
       xp += config.xpBonusBenjamin;
       medals.push("BENJAMIN");
     }
