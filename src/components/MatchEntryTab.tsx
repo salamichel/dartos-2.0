@@ -170,6 +170,24 @@ export default function MatchEntryTab({
         editingMatch?.id
       );
 
+      // Compute season XPs before this match for Benjamin calculation
+      const activeSeasonMatchesBefore = matches.filter(m => {
+        if (m.seasonId !== activeSeason.id) return false;
+        if (editingMatch && m.id === editingMatch.id) return false;
+        return new Date(m.playedAt).getTime() < matchDate.getTime();
+      });
+
+      const seasonXPsBeforeMap = new Map<number, number>();
+      players.forEach(p => {
+        seasonXPsBeforeMap.set(p.id, 0);
+      });
+      activeSeasonMatchesBefore.forEach(m => {
+        m.participants.forEach(p => {
+          const current = seasonXPsBeforeMap.get(p.playerId) || 0;
+          seasonXPsBeforeMap.set(p.playerId, current + p.xpEarned);
+        });
+      });
+
       const calculatedParticipants = calculateMatchResults(
         winnerId,
         winnerFinish,
@@ -177,7 +195,8 @@ export default function MatchEntryTab({
         winnerCareerXPBefore,
         loserXPsBeforeMap,
         activeSeason,
-        consecutiveWins
+        consecutiveWins,
+        seasonXPsBeforeMap
       );
 
       let savedMatch: Match;

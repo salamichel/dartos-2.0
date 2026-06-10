@@ -579,6 +579,13 @@ class DartosDB {
     const allMatches = [...this.state.matches].sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
 
     const simulatedCareerXPs = new Map<number, number>();
+    const simulatedSeasonXPs = new Map<number, number>();
+
+    // Pre-initialize all players with 0 XP for seasonal stats
+    const allPlayers = this.getPlayers();
+    allPlayers.forEach(p => {
+      simulatedSeasonXPs.set(p.id, 0);
+    });
 
     const firstSeasonMatchTime = new Date(seasonMatches[0].playedAt).getTime();
     const priorMatches = allMatches.filter(m => new Date(m.playedAt).getTime() < firstSeasonMatchTime);
@@ -587,6 +594,11 @@ class DartosDB {
       for (const part of pm.participants) {
         const cur = simulatedCareerXPs.get(part.playerId) || 0;
         simulatedCareerXPs.set(part.playerId, cur + part.xpEarned);
+
+        if (pm.seasonId === seasonId) {
+          const curSeason = simulatedSeasonXPs.get(part.playerId) || 0;
+          simulatedSeasonXPs.set(part.playerId, curSeason + part.xpEarned);
+        }
       }
     }
 
@@ -622,6 +634,9 @@ class DartosDB {
         }
       }
 
+      // Clone simulatedSeasonXPs before caller to represent season XP before the match
+      const seasonXPBeforeMap = new Map(simulatedSeasonXPs);
+
       const recalculated = calculateMatchResults(
         winnerId,
         finishType,
@@ -629,7 +644,8 @@ class DartosDB {
         winnerCareerXPBefore,
         loserXPBeforeMap,
         season,
-        consecutiveWins
+        consecutiveWins,
+        seasonXPBeforeMap
       );
 
       const updatedParticipants = m.participants.map(p => {
@@ -658,6 +674,7 @@ class DartosDB {
 
       for (const p of m.participants) {
         simulatedCareerXPs.set(p.playerId, (simulatedCareerXPs.get(p.playerId) || 0) + p.xpEarned);
+        simulatedSeasonXPs.set(p.playerId, (simulatedSeasonXPs.get(p.playerId) || 0) + p.xpEarned);
       }
 
       // Write changes to Firestore

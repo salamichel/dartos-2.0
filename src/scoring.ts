@@ -79,7 +79,7 @@ export function getMedalTitle(m: string): string {
     case "TUEUR_DE_GEANTS": return "Tueur de Géants (Bat un plus haut niveau)";
     case "PHENIX": return "Phénix (Outsider qui gagne)";
     case "SERIAL_WINNER": return "Serial Winner (3ème victoire d'affilée)";
-    case "BENJAMIN": return "Benjamin (Dernier mais proche)";
+    case "BENJAMIN": return "Benjamin (Dernier de la partie, dernier au classement XP ou < 50 pts)";
     default: return m;
   }
 }
@@ -157,7 +157,8 @@ export function calculateMatchResults(
   winnerCareerXPBefore: number,
   loserCareerXPsBefore: Map<number, number>, // Map from PlayerId -> career XP before match
   config: XPConfig,
-  winnerConsecutiveWinsBefore: number
+  winnerConsecutiveWinsBefore: number,
+  playerSeasonXPsBefore?: Map<number, number>
 ): MatchParticipant[] {
   // Sort losers ascending by remaining score (closest to 0 ranks higher)
   const sortedLosers = [...losers].sort((a, b) => a.scoreLeft - b.scoreLeft);
@@ -228,6 +229,11 @@ export function calculateMatchResults(
   const scoreCounts = new Map<number, number>();
   losers.forEach(l => scoreCounts.set(l.scoreLeft, (scoreCounts.get(l.scoreLeft) || 0) + 1));
 
+  // Minimum season XP among all players in the season
+  const minSeasonXP = playerSeasonXPsBefore && playerSeasonXPsBefore.size > 0
+    ? Math.min(...Array.from(playerSeasonXPsBefore.values()))
+    : 0;
+
   sortedLosers.forEach((loser, index) => {
     const rank = index + 2;
     let xp = config.xpSurvivorBase;
@@ -251,13 +257,18 @@ export function calculateMatchResults(
       medals.push("EGALITE");
     }
 
-    // Benjamin: last placed in a game with 3+ losers (4+ players) with scoreleft < 50
+    // Benjamin:
+    // - si dernier de la partie
+    // - si joueur est dernier en terme de classement xp sur la saison
+    // - si termine avec moins de 50pts
     const totalLosersInMatch = sortedLosers.length;
-    if (
-      totalLosersInMatch >= 2 && // 3+ players total
-      rank === totalLosersInMatch + 1 && // last place
-      loser.scoreLeft < 50
-    ) {
+    const isDernierDeLaPartie = rank === totalLosersInMatch + 1;
+    const isDernierClassementXpSaison = playerSeasonXPsBefore
+      ? (playerSeasonXPsBefore.get(loser.playerId) || 0) <= minSeasonXP
+      : false;
+    const isTermineMoinsDe50 = loser.scoreLeft < 50;
+
+    if (isDernierDeLaPartie || isDernierClassementXpSaison || isTermineMoinsDe50) {
       xp += config.xpBonusBenjamin;
       medals.push("BENJAMIN");
     }

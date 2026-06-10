@@ -633,7 +633,7 @@ export default function LeaderboardTab({
                 <li>🥈 <strong>POULIDOR</strong> : +15 XP (finit second, score restant inférieur à 10).</li>
                 <li>🎰 <strong>JACKPOT</strong> : +20 XP (finit à un score palindrome : 11, 22, 33, etc.).</li>
                 <li>🤝 <strong>ÉGALITÉ</strong> : +10 XP (même score qu'un autre survivant).</li>
-                <li>👶 <strong>BENJAMIN</strong> : +15 XP (dernier survivant d'un match à 3+ joueurs, score restant &lt; 50).</li>
+                <li>👶 <strong>BENJAMIN</strong> : +15 XP (attribué si dernier de la partie, ou si joueur est dernier au classement XP de la saison, ou s'il termine avec moins de 50 pts restants).</li>
               </ul>
             </div>
           </div>
