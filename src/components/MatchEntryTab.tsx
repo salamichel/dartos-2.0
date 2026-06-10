@@ -147,8 +147,11 @@ export default function MatchEntryTab({
     }
 
     try {
-      // Pull career XP before match
+      // Pull career XP strictly before this match's date (ignoring current edit and future matches)
       const allPlayerCareerXPs = dbStore.getMatches().reduce((map, m) => {
+        if (editingMatch && m.id === editingMatch.id) return map;
+        if (new Date(m.playedAt).getTime() >= matchDate.getTime()) return map;
+
         m.participants.forEach(p => {
           map.set(p.playerId, (map.get(p.playerId) || 0) + p.xpEarned);
         });

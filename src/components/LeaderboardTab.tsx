@@ -131,7 +131,7 @@ export default function LeaderboardTab({
   // Pre-seed visible players on chart to be the top 4
   useEffect(() => {
     if (leaderboard.length > 0) {
-      const topNames = leaderboard.slice(0, 4).map(p => p.name);
+      const topNames = leaderboard.slice(0, 5).map(p => p.name);
       setVisiblePlayers(topNames);
     }
   }, [leaderboard]);
@@ -480,7 +480,7 @@ export default function LeaderboardTab({
             ))}
             <option value="none">👤 Sans Alliance</option>
           </select>
-          
+
           {/* Toggle pill buttons */}
           <div id="chart-player-filters" className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-900/50">
             {leaderboard.map((row) => {

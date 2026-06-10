@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Calendar, Settings2, Sliders, ShieldAlert, BadgeInfo } from "lucide-react";
-import { Season, XPConfig } from "../types";
+import { Plus, Edit, Trash2, Calendar, Settings2, Sliders, ShieldAlert, BadgeInfo, BarChart, Users, Award, Percent, Flame, Medal, X, Crown } from "lucide-react";
+import { Player, Season, Match, Guild, XPConfig } from "../types";
 import { SEASON_DEFAULTS } from "../scoring";
 import { dbStore } from "../dbStore";
 
 interface SeasonsTabProps {
   seasons: Season[];
+  players: Player[];
+  matches: Match[];
+  guilds: Guild[];
   onSeasonsUpdated: () => void;
   onShowToast: (msg: string, type: "ok" | "err" | "info") => void;
   onShowConfirm: (msg: string) => Promise<boolean>;
+  isAdmin?: boolean;
 }
 
-export default function SeasonsTab({ seasons, onSeasonsUpdated, onShowToast, onShowConfirm }: SeasonsTabProps) {
+export default function SeasonsTab({
+  seasons,
+  players,
+  matches,
+  guilds,
+  onSeasonsUpdated,
+  onShowToast,
+  onShowConfirm,
+  isAdmin = false
+}: SeasonsTabProps) {
   // Season Form States
   const [editingSeasonId, setEditingSeasonId] = useState<number | null>(null);
   const [seasonName, setSeasonName] = useState("");
@@ -20,6 +33,7 @@ export default function SeasonsTab({ seasons, onSeasonsUpdated, onShowToast, onS
 
   const [xpConfig, setXpConfig] = useState<XPConfig>({ ...SEASON_DEFAULTS });
   const [statusMsg, setStatusMsg] = useState("");
+  const [selectedSeasonForStats, setSelectedSeasonForStats] = useState<Season | null>(null);
 
   useEffect(() => {
     resetForm();
@@ -117,6 +131,120 @@ export default function SeasonsTab({ seasons, onSeasonsUpdated, onShowToast, onS
       [key]: value
     }));
   };
+
+  // Calculation of season statistics
+  const stats = selectedSeasonForStats ? (() => {
+    const seasonMatches = matches.filter(m => m.seasonId === selectedSeasonForStats.id);
+    const totalMatches = seasonMatches.length;
+
+    // Unique players
+    const activePlayerSet = new Set<number>();
+    seasonMatches.forEach(m => {
+      m.participants.forEach(p => activePlayerSet.add(p.playerId));
+    });
+    const uniquePlayers = activePlayerSet.size;
+
+    // Total XP earned
+    let totalXP = 0;
+    seasonMatches.forEach(m => {
+      m.participants.forEach(p => {
+        totalXP += p.xpEarned;
+      });
+    });
+
+    const avgXP = totalMatches > 0 ? Math.round(totalXP / totalMatches) : 0;
+
+    // Finish type counts
+    let finishSimple = 0;
+    let finishDouble = 0;
+    let finishTriple = 0;
+
+    seasonMatches.forEach(m => {
+      const winner = m.participants.find(p => p.rank === 1);
+      if (winner) {
+        if (winner.finishType === "SIMPLE") finishSimple++;
+        else if (winner.finishType === "DOUBLE") finishDouble++;
+        else if (winner.finishType === "TRIPLE") finishTriple++;
+      }
+    });
+
+    // Medals earned in this season
+    const badges: Record<string, number> = {
+      TUEUR_DE_GEANTS: 0,
+      PHENIX: 0,
+      SERIAL_WINNER: 0,
+      POULIDOR: 0,
+      JACKPOT: 0,
+      EGALITE: 0,
+      BENJAMIN: 0,
+      LOTTERY_WINNER: 0
+    };
+
+    seasonMatches.forEach(m => {
+      m.participants.forEach(p => {
+        p.medals.forEach(mName => {
+          if (mName.startsWith("LOTTERY_WINNER:")) {
+            badges.LOTTERY_WINNER++;
+          } else if (badges[mName] !== undefined) {
+            badges[mName]++;
+          }
+        });
+      });
+    });
+
+    // Leaderboard for this season
+    const statsMap = new Map<number, { xp: number; wins: number; matchesCount: number }>();
+    seasonMatches.forEach(m => {
+      m.participants.forEach(p => {
+        const prev = statsMap.get(p.playerId) || { xp: 0, wins: 0, matchesCount: 0 };
+        statsMap.set(p.playerId, {
+          xp: prev.xp + p.xpEarned,
+          wins: prev.wins + (p.rank === 1 ? 1 : 0),
+          matchesCount: prev.matchesCount + 1
+        });
+      });
+    });
+
+    const leaderboardRows: any[] = [];
+    players.forEach(p => {
+      const sData = statsMap.get(p.id);
+      if (sData && sData.matchesCount > 0) {
+        const pg = guilds.find(g => g.memberIds.includes(p.id));
+        leaderboardRows.push({
+          id: p.id,
+          name: p.name,
+          xp: sData.xp,
+          wins: sData.wins,
+          played: sData.matchesCount,
+          winRate: sData.matchesCount > 0 ? Math.round((sData.wins / sData.matchesCount) * 100) : 0,
+          avgXP: Math.round(sData.xp / sData.matchesCount),
+          guild: pg ? { name: pg.name, badgeIcon: pg.badgeIcon, badgeColor: pg.badgeColor } : null
+        });
+      }
+    });
+
+    // Sort leaderboardRows: XP desc, wins desc, played asc
+    leaderboardRows.sort((a, b) => {
+      if (b.xp !== a.xp) return b.xp - a.xp;
+      if (b.wins !== a.wins) return b.wins - a.wins;
+      return a.played - b.played;
+    });
+
+    const champion = leaderboardRows[0] || null;
+
+    return {
+      totalMatches,
+      uniquePlayers,
+      totalXP,
+      avgXP,
+      finishSimple,
+      finishDouble,
+      finishTriple,
+      badges,
+      leaderboardRows,
+      champion
+    };
+  })() : null;
 
   return (
     <div className="space-y-6">
@@ -361,6 +489,14 @@ export default function SeasonsTab({ seasons, onSeasonsUpdated, onShowToast, onS
 
                 <div className="flex items-center gap-1.5 ml-11 sm:ml-0">
                   <button
+                    onClick={() => setSelectedSeasonForStats(s)}
+                    className="p-1.5 px-3 bg-[#111114] hover:bg-slate-900 border border-[#2A2A2E] text-emerald-400 text-[10px] font-bold rounded-none cursor-pointer transition flex items-center gap-1"
+                    title="Voir les statistiques de cette saison"
+                  >
+                    <BarChart className="w-3.5 h-3.5" />
+                    Stats
+                  </button>
+                  <button
                     onClick={() => handleEditSeason(s)}
                     className="p-1.5 px-3 bg-slate-950 hover:bg-slate-900 hover:text-white border border-[#2A2A2E] text-cosmic-accent text-[10px] font-bold rounded-none cursor-pointer transition flex items-center gap-1"
                   >
@@ -380,6 +516,283 @@ export default function SeasonsTab({ seasons, onSeasonsUpdated, onShowToast, onS
           })}
         </ul>
       </div>
+
+      {/* SEASON STATISTICS DRAWER/MODAL DISPLAY */}
+      {selectedSeasonForStats && stats && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md select-none overflow-y-auto">
+          <div className="w-full max-w-3xl bg-slate-900 border border-[#2A2A2E] rounded-none shadow-2xl relative flex flex-col my-8 max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="p-5 bg-slate-950 border-b border-[#2A2A2E] flex justify-between items-center shrink-0">
+              <div className="space-y-0.5">
+                <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#3dc7ff] bg-[#3dc7ff]/10 px-2.5 py-0.5 border border-[#3dc7ff]/20">
+                  STATS DE SAISON 📊
+                </span>
+                <h3 className="text-lg font-black font-serif text-white tracking-wide pt-1">
+                  {selectedSeasonForStats.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedSeasonForStats(null)}
+                className="text-slate-400 hover:text-white hover:bg-slate-800/40 p-2 border border-[#2A2A2E] rounded-none transition cursor-pointer"
+                title="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Content - Scrollable */}
+            <div className="p-6 overflow-y-auto space-y-6 max-h-[calc(90vh-140px)] select-text">
+              
+              {/* Quick Summary Cards Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-slate-950/60 border border-[#2A2A2E] p-4 text-center rounded-none relative overflow-hidden group">
+                  <div className="absolute top-1 right-2 opacity-5 select-none text-white pointer-events-none text-2xl font-black">🎯</div>
+                  <span className="block text-2xl font-black font-mono text-white leading-none">
+                    {isAdmin ? stats.totalMatches : "🔒"}
+                  </span>
+                  <span className="block text-[9px] uppercase font-bold tracking-wider text-slate-400 mt-1">
+                    Matchs Joués
+                  </span>
+                </div>
+
+                <div className="bg-slate-950/60 border border-[#2A2A2E] p-4 text-center rounded-none relative overflow-hidden group">
+                  <div className="absolute top-1 right-2 opacity-5 select-none text-white pointer-events-none text-2xl font-black">👥</div>
+                  <span className="block text-2xl font-black font-mono text-white leading-none">
+                    {stats.uniquePlayers}
+                  </span>
+                  <span className="block text-[9px] uppercase font-bold tracking-wider text-slate-400 mt-1">
+                    Lanceurs Actifs
+                  </span>
+                </div>
+
+                <div className="bg-slate-950/60 border border-[#2A2A2E] p-4 text-center rounded-none relative overflow-hidden group">
+                  <div className="absolute top-1 right-2 opacity-5 select-none text-white pointer-events-none text-2xl font-black">💎</div>
+                  <span className="block text-2xl font-black font-mono text-emerald-400 leading-none">
+                    {stats.totalXP.toLocaleString()}
+                  </span>
+                  <span className="block text-[9px] uppercase font-bold tracking-wider text-slate-400 mt-1">
+                    XP Total Accumulé
+                  </span>
+                </div>
+
+                <div className="bg-slate-950/60 border border-[#2A2A2E] p-4 text-center rounded-none relative overflow-hidden group">
+                  <div className="absolute top-1 right-2 opacity-5 select-none text-white pointer-events-none text-2xl font-black">⚡</div>
+                  <span className="block text-2xl font-black font-mono text-sky-400 leading-none">
+                    {stats.avgXP}
+                  </span>
+                  <span className="block text-[9px] uppercase font-bold tracking-wider text-slate-400 mt-1">
+                    Moyenne XP / Match
+                  </span>
+                </div>
+              </div>
+
+              {/* Champion & Closing styles section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Champion of the season card */}
+                <div className="bg-gradient-to-b from-amber-500/10 to-[#0F0F12] border border-amber-500/20 p-5 rounded-none flex items-center justify-between gap-4">
+                  <div className="space-y-1.5 flex-1">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 text-amber-400 font-bold font-mono text-[9px] border border-amber-500/20 rounded-none uppercase">
+                      <Crown className="w-3 h-3" /> Roi de la Saison
+                    </span>
+                    {stats.champion ? (
+                      <div>
+                        <h4 className="text-base font-black text-white select-text font-serif">
+                          {stats.champion.name}
+                        </h4>
+                        <p className="text-[11px] text-slate-400 font-sans mt-1">
+                          Dominant avec <strong className="text-emerald-400 font-mono">{stats.champion.xp} XP</strong> et <strong className="text-amber-400 font-mono">{stats.champion.wins} victoires</strong> {isAdmin ? `sur ${stats.champion.played} matchs !` : "!"}
+                        </p>
+                        <p className="text-[10px] text-[#55555F] font-mono mt-0.5">
+                          Taux de réussite : {stats.champion.winRate}% (Moy. {stats.champion.avgXP} XP/match)
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400 pt-1">
+                        Aucun champion identifié pour le moment.
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-4xl filter drop-shadow-[0_0_8px_rgba(245,158,11,0.3)] select-none">👑</span>
+                </div>
+
+                {/* Closing finishes stats */}
+                <div className="bg-[#111114] border border-[#2A2A2E] p-4 rounded-none space-y-3.5">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 border-b border-[#2A2A2E]/50 pb-2">
+                    <Percent className="w-3.5 h-3.5 text-cosmic-accent" />
+                    Types de Fermeture gagnants
+                  </h4>
+
+                  {stats.totalMatches > 0 ? (
+                    <div className="space-y-2.5 text-xs">
+                      {/* Simple Close */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-[10px] font-bold font-mono text-slate-400">
+                          <span>SIMPLE</span>
+                          <span>{stats.finishSimple} ({Math.round((stats.finishSimple / stats.totalMatches) * 100)}%)</span>
+                        </div>
+                        <div className="w-full bg-slate-950 h-1.5 border border-[#2A2A2E] rounded-none overflow-hidden">
+                          <div className="h-full bg-slate-400" style={{ width: `${(stats.finishSimple / stats.totalMatches) * 100}%` }} />
+                        </div>
+                      </div>
+
+                      {/* Double Close */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-[10px] font-bold font-mono text-amber-400">
+                          <span>DOUBLE (Double Close)</span>
+                          <span>{stats.finishDouble} ({Math.round((stats.finishDouble / stats.totalMatches) * 100)}%)</span>
+                        </div>
+                        <div className="w-full bg-slate-950 h-1.5 border border-[#2A2A2E] rounded-none overflow-hidden">
+                          <div className="h-full bg-amber-500" style={{ width: `${(stats.finishDouble / stats.totalMatches) * 100}%` }} />
+                        </div>
+                      </div>
+
+                      {/* Triple Close */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-[10px] font-bold font-mono text-cosmic-accent">
+                          <span>TRIPLE (Triple Close)</span>
+                          <span>{stats.finishTriple} ({Math.round((stats.finishTriple / stats.totalMatches) * 100)}%)</span>
+                        </div>
+                        <div className="w-full bg-slate-950 h-1.5 border border-[#2A2A2E] rounded-none overflow-hidden">
+                          <div className="h-full bg-cosmic-accent" style={{ width: `${(stats.finishTriple / stats.totalMatches) * 100}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 text-center py-4">Pas de données de match disponibles.</p>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Medals counts section */}
+              <div className="bg-[#111114] border border-[#2A2A2E] p-4 rounded-none space-y-3.5">
+                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 border-b border-[#2A2A2E]/50 pb-2">
+                  <Medal className="w-3.5 h-3.5 text-cosmic-accent" />
+                  Médailles et Badges décernés
+                </h4>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                  {[
+                    { key: "TUEUR_DE_GEANTS", name: "Tueur de Géant", emoji: "⚔️🏆", color: "text-amber-400" },
+                    { key: "PHENIX", name: "Phénix", emoji: "🔥", color: "text-red-400" },
+                    { key: "SERIAL_WINNER", name: "Serial Winner", emoji: "🔥🔥", color: "text-pink-400" },
+                    { key: "POULIDOR", name: "Poulidor", emoji: "🥈", color: "text-slate-300" },
+                    { key: "JACKPOT", name: "Jackpot", emoji: "🎰", color: "text-purple-400" },
+                    { key: "EGALITE", name: "Égalité", emoji: "🤝", color: "text-sky-400" },
+                    { key: "BENJAMIN", name: "Benjamin", emoji: "👶", color: "text-orange-400" },
+                    { key: "LOTTERY_WINNER", name: "Tombola", emoji: "🍀", color: "text-emerald-400" }
+                  ].map(badge => {
+                    const count = stats.badges[badge.key] || 0;
+                    return (
+                      <div key={badge.key} className="bg-slate-950 p-2.5 border border-[#2A2A2E] flex items-center justify-between rounded-none">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base select-none">{badge.emoji}</span>
+                          <span className="text-[11px] font-bold text-slate-300 truncate">{badge.name}</span>
+                        </div>
+                        <span className="font-mono text-white font-extrabold px-1.5 py-0.5 bg-slate-900 border border-slate-800 text-xs">
+                          {count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Table of Season performances */}
+              <div className="bg-[#111114] border border-[#2A2A2E] rounded-none overflow-hidden">
+                <div className="p-3 bg-slate-950 border-b border-[#2A2A2E] flex justify-between items-center">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <BarChart className="w-3.5 h-3.5 text-[#3dc7ff]" />
+                    Classement de la Saison
+                  </h4>
+                  <span className="text-[9px] font-mono text-slate-500 uppercase font-bold">
+                    {stats.leaderboardRows.length} Joueur(s) actif(s)
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950/40 border-b border-[#2A2A2E] text-[9.5px] font-bold tracking-wider text-slate-400 uppercase font-mono">
+                        <th className="py-2.5 px-3 w-10 text-center">Rang</th>
+                        <th className="py-2.5 px-3">Lanceur</th>
+                        {isAdmin && <th className="py-2.5 px-3 text-center">Parties</th>}
+                        <th className="py-2.5 px-3 text-center">Victoires</th>
+                        <th className="py-2.5 px-3 text-center">Win Rate</th>
+                        <th className="py-2.5 px-3 text-right">Moy XP</th>
+                        <th className="py-2.5 px-3 text-right">XP Saison</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-900/60 font-sans text-slate-300">
+                      {stats.leaderboardRows.length > 0 ? (
+                        stats.leaderboardRows.map((row, index) => (
+                          <tr key={row.id} className="hover:bg-slate-900/40 transition">
+                            <td className="py-2 px-3 text-center font-mono font-bold text-slate-500">
+                              {index + 1}
+                            </td>
+                            <td className="py-2 px-3 font-semibold text-white">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold">{row.name}</span>
+                                {row.guild && (
+                                  <span
+                                    className="px-1.5 py-0.5 text-[8.5px] rounded-none font-bold text-white border filter brightness-110 shrink-0"
+                                    style={{
+                                      backgroundColor: `${row.guild.badgeColor}15`,
+                                      borderColor: `${row.guild.badgeColor}30`,
+                                      color: row.guild.badgeColor
+                                    }}
+                                  >
+                                    {row.guild.badgeIcon} {row.guild.name}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            {isAdmin && (
+                              <td className="py-2 px-3 text-center font-mono text-slate-400">
+                                {row.played}
+                              </td>
+                            )}
+                            <td className="py-2 px-3 text-center font-mono text-amber-400 font-bold">
+                              {row.wins}
+                            </td>
+                            <td className="py-2 px-3 text-center font-mono text-slate-450">
+                              {row.winRate}%
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-sky-400">
+                              {row.avgXP}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-emerald-400 font-bold">
+                              {row.xp.toLocaleString()} XP
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={isAdmin ? 7 : 6} className="py-6 text-center text-slate-500">Aucune activité enregistrée sur cette saison.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-950 border-t border-[#2A2A2E] text-center shrink-0">
+              <button
+                onClick={() => setSelectedSeasonForStats(null)}
+                className="px-5 py-2 hover:bg-slate-900 text-slate-400 hover:text-white text-xs font-bold uppercase tracking-wider rounded-none border border-[#2A2A2E] transition cursor-pointer"
+              >
+                Fermer
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }

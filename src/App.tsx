@@ -371,9 +371,13 @@ export default function App() {
             {activeTab === "seasons" && (
               <SeasonsTab
                 seasons={seasons}
+                players={players}
+                matches={matches}
+                guilds={guilds}
                 onSeasonsUpdated={syncDatabase}
                 onShowToast={showToast}
                 onShowConfirm={showConfirm}
+                isAdmin={isUnlocked}
               />
             )}
           </motion.div>

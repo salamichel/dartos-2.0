@@ -372,8 +372,14 @@ class DartosDB {
     }
 
     this.state.matches.push(newMatch);
+    
+    // Auto-recalculate season to propagate consecutive wins and updated xpBefore correctly
+    await this.recalculateSeasonMatches(newMatch.seasonId);
+
     this.saveLocalAndNotify();
-    return newMatch;
+    
+    const recalculatedMatch = this.state.matches.find(m => m.id === newMatch.id) || newMatch;
+    return recalculatedMatch;
   }
 
   async updateMatch(id: number, updatedData: Omit<Match, "id">): Promise<Match> {
@@ -391,13 +397,22 @@ class DartosDB {
     }
 
     this.state.matches[index] = updated;
+
+    // Auto-recalculate season to propagate consecutive wins and updated xpBefore correctly
+    await this.recalculateSeasonMatches(updated.seasonId);
+
     this.saveLocalAndNotify();
-    return updated;
+
+    const recalculatedMatch = this.state.matches.find(m => m.id === id) || updated;
+    return recalculatedMatch;
   }
 
   async deleteMatch(id: number) {
     const index = this.state.matches.findIndex(m => m.id === id);
     if (index === -1) throw new Error("Match introuvable");
+
+    const matchToDelete = this.state.matches[index];
+    const seasonId = matchToDelete.seasonId;
 
     try {
       await deleteDoc(doc(db, "matches", id.toString()));
@@ -406,6 +421,10 @@ class DartosDB {
     }
 
     this.state.matches.splice(index, 1);
+
+    // Auto-recalculate season to propagate consecutive wins and updated xpBefore correctly
+    await this.recalculateSeasonMatches(seasonId);
+
     this.saveLocalAndNotify();
   }
 
