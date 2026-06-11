@@ -405,7 +405,7 @@ export default function App() {
 
               {/* Participants listings */}
               <div className="p-5 overflow-y-auto space-y-3 divide-y divide-slate-800/40 max-h-[300px]" style={{ containIntrinsicSize: "auto 150px", contentVisibility: "auto" }}>
-                {[...recordedMatch.participants].sort((a,b) => a.rank - b.rank).map((part, i) => {
+                {[...(recordedMatch.participants || [])].sort((a,b) => a.rank - b.rank).map((part, i) => {
                   const pData = players.find(x => x.id === part.playerId);
                   const isWinner = part.rank === 1;
 
@@ -434,7 +434,7 @@ export default function App() {
                                 Resté : {part.scoreLeft} pt(s)
                               </span>
                             )}
-                            {part.medals.map(m => (
+                            {(part.medals || []).map(m => (
                               <span
                                 key={m}
                                 className="px-1 py-0.2 bg-slate-950 border border-slate-805 text-[9px] rounded font-semibold select-none cursor-help"

@@ -182,7 +182,7 @@ export default function LeaderboardTab({
       const seasonMatches = matches.filter(m => m.seasonId === selectedSeasonId);
 
       seasonMatches.forEach(m => {
-        m.participants.forEach(p => {
+        (m.participants || []).forEach(p => {
           const prev = map.get(p.playerId) || { xp: 0, wins: 0, matchesCount: 0 };
           map.set(p.playerId, {
             xp: prev.xp + p.xpEarned,
@@ -196,7 +196,7 @@ export default function LeaderboardTab({
         const stats = map.get(p.id) || { xp: 0, wins: 0, matchesCount: 0 };
         // Don't show players with 0 matches in season leaderboard to keep it relevant
         if (stats.matchesCount > 0) {
-          const pg = guilds.find(g => g.memberIds.includes(p.id));
+          const pg = guilds.find(g => (g.memberIds || []).includes(p.id));
           result.push({
             id: p.id,
             name: p.name,
@@ -211,7 +211,7 @@ export default function LeaderboardTab({
       // Global leaderboard (All XP career)
       const map = new Map<number, { xp: number; wins: number; matchesCount: number }>();
       matches.forEach(m => {
-        m.participants.forEach(p => {
+        (m.participants || []).forEach(p => {
           const prev = map.get(p.playerId) || { xp: 0, wins: 0, matchesCount: 0 };
           map.set(p.playerId, {
             xp: prev.xp + p.xpEarned,
@@ -223,7 +223,7 @@ export default function LeaderboardTab({
 
       players.forEach(p => {
         const stats = map.get(p.id) || { xp: 0, wins: 0, matchesCount: 0 };
-        const pg = guilds.find(g => g.memberIds.includes(p.id));
+        const pg = guilds.find(g => (g.memberIds || []).includes(p.id));
         result.push({
           id: p.id,
           name: p.name,
@@ -238,10 +238,10 @@ export default function LeaderboardTab({
     // Filter by guild if selected
     if (selectedGuildId !== "") {
       if (selectedGuildId === "none") {
-        result = result.filter(row => !guilds.some(g => g.memberIds.includes(row.id)));
+        result = result.filter(row => !guilds.some(g => (g.memberIds || []).includes(row.id)));
       } else {
         const targetGuild = guilds.find(g => g.id === selectedGuildId);
-        const memberIds = targetGuild ? targetGuild.memberIds : [];
+        const memberIds = targetGuild ? (targetGuild.memberIds || []) : [];
         result = result.filter(row => memberIds.includes(row.id));
       }
     }
@@ -306,7 +306,7 @@ export default function LeaderboardTab({
     const dateStr = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
     const label = `M${idx + 1} (${dateStr})`;
 
-    m.participants.forEach(p => {
+    (m.participants || []).forEach(p => {
       if (runningPlayerXPs[p.playerId] !== undefined) {
         runningPlayerXPs[p.playerId] += p.xpEarned;
       }

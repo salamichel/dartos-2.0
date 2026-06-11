@@ -140,14 +140,14 @@ export default function SeasonsTab({
     // Unique players
     const activePlayerSet = new Set<number>();
     seasonMatches.forEach(m => {
-      m.participants.forEach(p => activePlayerSet.add(p.playerId));
+      (m.participants || []).forEach(p => activePlayerSet.add(p.playerId));
     });
     const uniquePlayers = activePlayerSet.size;
 
     // Total XP earned
     let totalXP = 0;
     seasonMatches.forEach(m => {
-      m.participants.forEach(p => {
+      (m.participants || []).forEach(p => {
         totalXP += p.xpEarned;
       });
     });
@@ -160,7 +160,7 @@ export default function SeasonsTab({
     let finishTriple = 0;
 
     seasonMatches.forEach(m => {
-      const winner = m.participants.find(p => p.rank === 1);
+      const winner = (m.participants || []).find(p => p.rank === 1);
       if (winner) {
         if (winner.finishType === "SIMPLE") finishSimple++;
         else if (winner.finishType === "DOUBLE") finishDouble++;
@@ -181,8 +181,8 @@ export default function SeasonsTab({
     };
 
     seasonMatches.forEach(m => {
-      m.participants.forEach(p => {
-        p.medals.forEach(mName => {
+      (m.participants || []).forEach(p => {
+        (p.medals || []).forEach(mName => {
           if (mName.startsWith("LOTTERY_WINNER:")) {
             badges.LOTTERY_WINNER++;
           } else if (badges[mName] !== undefined) {
@@ -195,7 +195,7 @@ export default function SeasonsTab({
     // Leaderboard for this season
     const statsMap = new Map<number, { xp: number; wins: number; matchesCount: number }>();
     seasonMatches.forEach(m => {
-      m.participants.forEach(p => {
+      (m.participants || []).forEach(p => {
         const prev = statsMap.get(p.playerId) || { xp: 0, wins: 0, matchesCount: 0 };
         statsMap.set(p.playerId, {
           xp: prev.xp + p.xpEarned,
@@ -209,7 +209,7 @@ export default function SeasonsTab({
     players.forEach(p => {
       const sData = statsMap.get(p.id);
       if (sData && sData.matchesCount > 0) {
-        const pg = guilds.find(g => g.memberIds.includes(p.id));
+        const pg = guilds.find(g => (g.memberIds || []).includes(p.id));
         leaderboardRows.push({
           id: p.id,
           name: p.name,

@@ -46,13 +46,13 @@ export default function GuildsTab({
       // Filter matches by current active season if activeSeasonId is provided
       if (activeSeasonId !== "" && m.seasonId !== activeSeasonId) return;
 
-      m.participants.forEach(part => {
+      (m.participants || []).forEach(part => {
         const stats = playerStatsMap.get(part.playerId) || { xp: 0, wins: 0, badgesCount: 0, uniqueBadges: [] };
-        const uniqueBonusSet = new Set([...stats.uniqueBadges, ...part.medals]);
+        const uniqueBonusSet = new Set([...stats.uniqueBadges, ...(part.medals || [])]);
         playerStatsMap.set(part.playerId, {
           xp: stats.xp + part.xpEarned,
           wins: stats.wins + (part.rank === 1 ? 1 : 0),
-          badgesCount: stats.badgesCount + part.medals.length,
+          badgesCount: stats.badgesCount + (part.medals ? part.medals.length : 0),
           uniqueBadges: Array.from(uniqueBonusSet)
         });
       });
@@ -60,7 +60,7 @@ export default function GuildsTab({
 
     const list = dbStore.getGuilds();
     const formatted: GuildWithStats[] = list.map(g => {
-      const roster: GuildMemberWithStats[] = g.memberIds.map(memId => {
+      const roster: GuildMemberWithStats[] = (g.memberIds || []).map(memId => {
         const pData = players.find(x => x.id === memId);
         const pStats = playerStatsMap.get(memId) || { xp: 0, wins: 0, badgesCount: 0, uniqueBadges: [] };
         

@@ -85,7 +85,13 @@ class DartosDB {
         if (!this.state.players) this.state.players = [];
         if (!this.state.seasons) this.state.seasons = [];
         if (!this.state.matches) this.state.matches = [];
+        this.state.matches.forEach(m => {
+          if (!m.participants) m.participants = [];
+        });
         if (!this.state.guilds) this.state.guilds = [];
+        this.state.guilds.forEach(g => {
+          if (!g.memberIds) g.memberIds = [];
+        });
         if (!this.state.adminPassword) this.state.adminPassword = "admin";
       } catch (e) {
         this.state = { ...INITIAL_STATE };
@@ -118,7 +124,10 @@ class DartosDB {
     onSnapshot(collection(db, "players"), (snap) => {
       const players: Player[] = [];
       snap.forEach(d => {
-        players.push(d.data() as Player);
+        const p = d.data() as Player;
+        if (p) {
+          players.push(p);
+        }
       });
       // If Firestore is empty but we have our initial memory state,
       // let's keep the memory state rather than wiping it right away.
@@ -135,7 +144,10 @@ class DartosDB {
     onSnapshot(collection(db, "seasons"), (snap) => {
       const seasons: Season[] = [];
       snap.forEach(d => {
-        seasons.push(d.data() as Season);
+        const s = d.data() as Season;
+        if (s) {
+          seasons.push(s);
+        }
       });
       this.state.seasons = seasons.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
@@ -147,7 +159,11 @@ class DartosDB {
     onSnapshot(collection(db, "matches"), (snap) => {
       const matches: Match[] = [];
       snap.forEach(d => {
-        matches.push(d.data() as Match);
+        const m = d.data() as Match;
+        if (m) {
+          m.participants = m.participants || [];
+          matches.push(m);
+        }
       });
       this.state.matches = matches.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
@@ -159,7 +175,11 @@ class DartosDB {
     onSnapshot(collection(db, "guilds"), (snap) => {
       const guilds: Guild[] = [];
       snap.forEach(d => {
-        guilds.push(d.data() as Guild);
+        const g = d.data() as Guild;
+        if (g) {
+          g.memberIds = g.memberIds || [];
+          guilds.push(g);
+        }
       });
       this.state.guilds = guilds.sort((a,b) => a.id - b.id);
       this.saveLocalAndNotify();
@@ -436,7 +456,7 @@ class DartosDB {
     const cloned = JSON.parse(JSON.stringify(match)) as Match;
 
     playerGains.forEach(gain => {
-      const p = cloned.participants.find(part => part.playerId === gain.playerId);
+      const p = (cloned.participants || []).find(part => part.playerId === gain.playerId);
       if (p) {
         p.xpEarned += gain.xpBonus;
         p.xpBonusLotteryEarned = (p.xpBonusLotteryEarned || 0) + gain.xpBonus;
@@ -544,7 +564,7 @@ class DartosDB {
 
     // Players can only be in one guild at a time
     const updatedGuilds = this.state.guilds.map(g => {
-      const updated = { ...g };
+      const updated = { ...g, memberIds: g.memberIds || [] };
       if (g.id === guildId) {
         if (!updated.memberIds.includes(playerId)) {
           updated.memberIds = [...updated.memberIds, playerId];
@@ -572,7 +592,7 @@ class DartosDB {
     const guild = this.state.guilds.find(g => g.id === guildId);
     if (!guild) throw new Error("Guilde introuvable");
 
-    const cloned = { ...guild };
+    const cloned = { ...guild, memberIds: guild.memberIds || [] };
     cloned.memberIds = cloned.memberIds.filter(id => id !== playerId);
 
     try {
@@ -612,7 +632,7 @@ class DartosDB {
     const priorMatches = allMatches.filter(m => new Date(m.playedAt).getTime() < firstSeasonMatchTime);
 
     for (const pm of priorMatches) {
-      for (const part of pm.participants) {
+      for (const part of pm.participants || []) {
         const cur = simulatedCareerXPs.get(part.playerId) || 0;
         simulatedCareerXPs.set(part.playerId, cur + part.xpEarned);
 
@@ -624,8 +644,8 @@ class DartosDB {
     }
 
     for (const m of seasonMatches) {
-      const winnerPart = m.participants.find(p => p.rank === 1);
-      const loserParts = m.participants.filter(p => p.rank > 1);
+      const winnerPart = (m.participants || []).find(p => p.rank === 1);
+      const loserParts = (m.participants || []).filter(p => p.rank > 1);
 
       if (!winnerPart) continue;
 
@@ -647,7 +667,7 @@ class DartosDB {
       let consecutiveWins = 0;
       for (let i = currentIndexInSeason - 1; i >= 0; i--) {
         const prevMatch = seasonMatches[i];
-        const prevWinner = prevMatch.participants.find(p => p.rank === 1);
+        const prevWinner = (prevMatch.participants || []).find(p => p.rank === 1);
         if (prevWinner && prevWinner.playerId === winnerId) {
           consecutiveWins++;
         } else {
@@ -669,7 +689,7 @@ class DartosDB {
         seasonXPBeforeMap
       );
 
-      const updatedParticipants = m.participants.map(p => {
+      const updatedParticipants = (m.participants || []).map(p => {
         const recalc = recalculated.find(r => r.playerId === p.playerId);
         if (!recalc) return p;
 
@@ -693,7 +713,7 @@ class DartosDB {
 
       m.participants = updatedParticipants;
 
-      for (const p of m.participants) {
+      for (const p of m.participants || []) {
         simulatedCareerXPs.set(p.playerId, (simulatedCareerXPs.get(p.playerId) || 0) + p.xpEarned);
         simulatedSeasonXPs.set(p.playerId, (simulatedSeasonXPs.get(p.playerId) || 0) + p.xpEarned);
       }

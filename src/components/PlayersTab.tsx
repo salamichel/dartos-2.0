@@ -83,13 +83,13 @@ export default function PlayersTab({
     const badgesGroup: Record<string, number> = {};
 
     matches.forEach(m => {
-      const part = m.participants.find(pt => pt.playerId === p.id);
+      const part = (m.participants || []).find(pt => pt.playerId === p.id);
       if (part) {
         totalXP += part.xpEarned;
         if (activeSeason && m.seasonId === activeSeason.id) {
           seasonXP += part.xpEarned;
         }
-        part.medals.forEach(medal => {
+        (part.medals || []).forEach(medal => {
           badgesGroup[medal] = (badgesGroup[medal] || 0) + 1;
         });
       }

@@ -41,7 +41,7 @@ export default function SlotMachineLottery({ match, season, players, onGainsSave
   useEffect(() => {
     // 1. Gather emojis from participants (up to 5 of each)
     let participantEmojis: string[] = [];
-    match.participants.forEach(part => {
+    (match.participants || []).forEach(part => {
       const pData = players.find(x => x.id === part.playerId);
       if (pData) {
         participantEmojis = participantEmojis.concat(extractEmojis(pData.name).slice(0, 5));
@@ -85,7 +85,7 @@ export default function SlotMachineLottery({ match, season, players, onGainsSave
     const playerGains: { playerId: number; xpBonus: number; emojis: string[] }[] = [];
     const matchMessages: string[] = [];
 
-    match.participants.forEach(part => {
+    (match.participants || []).forEach(part => {
       const pData = players.find(x => x.id === part.playerId);
       if (!pData) return;
 

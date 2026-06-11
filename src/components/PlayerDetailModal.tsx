@@ -1,5 +1,5 @@
 import React from "react";
-import { X, Award, Swords, Zap, Sparkles, Flame, Percent, Target, Skull, TrendingUp } from "lucide-react";
+import { X, Award, Swords, Zap, Sparkles, Flame, Percent, Target, Skull, TrendingUp, Trophy, Activity } from "lucide-react";
 import { motion } from "motion/react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Player, Match, Guild, Season } from "../types";
@@ -34,7 +34,7 @@ export default function PlayerDetailModal({
       // Find seasons where player played at least once
       const playedIds = new Set<number>();
       matches.forEach(m => {
-        if (m.participants.some(p => p.playerId === player.id) && m.seasonId) {
+        if ((m.participants || []).some(p => p.playerId === player.id) && m.seasonId) {
           playedIds.add(m.seasonId);
         }
       });
@@ -50,7 +50,7 @@ export default function PlayerDetailModal({
 
   // 1. Filter matching stats
   const playerMatches = matches
-    .filter(m => m.participants.some(p => p.playerId === player.id))
+    .filter(m => (m.participants || []).some(p => p.playerId === player.id))
     .sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()); // newest first
 
   const totalMatchesCount = playerMatches.length;
@@ -77,7 +77,7 @@ export default function PlayerDetailModal({
   const faceoffsMap: Record<number, { playedTogether: number; rivalBeatsPlayer: number; playerBeatsRival: number }> = {};
 
   playerMatches.forEach(m => {
-    const selfPart = m.participants.find(p => p.playerId === player.id);
+    const selfPart = (m.participants || []).find(p => p.playerId === player.id);
     if (selfPart) {
       totalXP += selfPart.xpEarned;
       if (activeSeason && m.seasonId === activeSeason.id) {
@@ -95,12 +95,12 @@ export default function PlayerDetailModal({
       rankCountMap[selfPart.rank] = (rankCountMap[selfPart.rank] || 0) + 1;
 
       // Group medals
-      selfPart.medals.forEach(medal => {
+      (selfPart.medals || []).forEach(medal => {
         medalsCountMap[medal] = (medalsCountMap[medal] || 0) + 1;
       });
 
       // Look at faceoffs with other players in this match
-      m.participants.forEach(other => {
+      (m.participants || []).forEach(other => {
         if (other.playerId === player.id) return;
         
         if (!faceoffsMap[other.playerId]) {
@@ -136,6 +136,71 @@ export default function PlayerDetailModal({
   const winRate = totalMatchesCount > 0 ? Math.round((winsCount / totalMatchesCount) * 100) : 0;
   const avgXpPerMatch = totalMatchesCount > 0 ? Math.round(totalXP / totalMatchesCount) : 0;
 
+  // Calcul des statistiques avancées demandées par l'utilisateur
+  // 1. Séries de victoires (Série active en cours et Série historique maximale)
+  let currentStreak = 0;
+  let tempStreak = 0;
+  let maxStreak = 0;
+
+  for (let i = 0; i < playerMatches.length; i++) {
+    const selfPart = (playerMatches[i].participants || []).find(p => p.playerId === player.id);
+    if (selfPart) {
+      if (selfPart.rank === 1) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  for (let i = playerMatches.length - 1; i >= 0; i--) {
+    const selfPart = (playerMatches[i].participants || []).find(p => p.playerId === player.id);
+    if (selfPart) {
+      if (selfPart.rank === 1) {
+        tempStreak++;
+        if (tempStreak > maxStreak) {
+          maxStreak = tempStreak;
+        }
+      } else {
+        tempStreak = 0;
+      }
+    }
+  }
+
+  // 2. Position moyenne dans l'arène (Rang moyen de placement, ex: 2.15)
+  let totalRankSum = 0;
+  let matchesWithRankCount = 0;
+  playerMatches.forEach(m => {
+    const selfPart = (m.participants || []).find(p => p.playerId === player.id);
+    if (selfPart) {
+      totalRankSum += selfPart.rank;
+      matchesWithRankCount++;
+    }
+  });
+  const avgRank = matchesWithRankCount > 0 ? (totalRankSum / matchesWithRankCount).toFixed(2) : "N/A";
+
+  // 3. Taux de podium (Pourcentage de parties terminées dans le Top 3)
+  let podiumsCount = 0;
+  playerMatches.forEach(m => {
+    const selfPart = (m.participants || []).find(p => p.playerId === player.id);
+    if (selfPart && selfPart.rank <= 3) {
+      podiumsCount++;
+    }
+  });
+  const podiumRate = totalMatchesCount > 0 ? Math.round((podiumsCount / totalMatchesCount) * 100) : 0;
+
+  // 4. Score restant moyen (Indicateur de précision de fin de partie lors des défaites)
+  let sumScoreLeft = 0;
+  let countDefeats = 0;
+  playerMatches.forEach(m => {
+    const selfPart = (m.participants || []).find(p => p.playerId === player.id);
+    if (selfPart && selfPart.rank > 1 && selfPart.scoreLeft !== null) {
+      sumScoreLeft += selfPart.scoreLeft;
+      countDefeats++;
+    }
+  });
+  const avgScoreLeft = countDefeats > 0 ? Math.round(sumScoreLeft / countDefeats) : null;
+
   // Determine favorite target / rival metrics
   let nemesisPlayer: Player | null = null;
   let nemesisBeatsCount = 0;
@@ -159,20 +224,20 @@ export default function PlayerDetailModal({
 
   // Recent 5 matches form helper
   const recentForm = playerMatches.slice(0, 5).map(m => {
-    const selfSec = m.participants.find(p => p.playerId === player.id)!;
+    const selfSec = (m.participants || []).find(p => p.playerId === player.id)!;
     const date = new Date(m.playedAt);
     return {
       matchId: m.id,
-      rank: selfSec.rank,
-      xpEarned: selfSec.xpEarned,
-      medals: selfSec.medals,
-      finishType: selfSec.finishType,
+      rank: selfSec?.rank || 0,
+      xpEarned: selfSec?.xpEarned || 0,
+      medals: selfSec?.medals || [],
+      finishType: selfSec?.finishType || "SIMPLE",
       dateFormatted: date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })
     };
   });
 
   // Guild info
-  const playerGuild = guilds.find(g => g.memberIds.includes(player.id));
+  const playerGuild = guilds.find(g => (g.memberIds || []).includes(player.id));
 
   return (
     <div
@@ -278,13 +343,63 @@ export default function PlayerDetailModal({
             <div id="metric-box-avgxp" className="bg-[#111114] border border-[#2A2A2E] p-4 text-center rounded-none relative overflow-hidden group">
               <Zap className="w-4 h-4 text-slate-500 absolute top-3 right-3 opacity-60 group-hover:scale-110 transition-transform" />
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-display">XP Moyenne / Match</div>
-              <div className="text-2xl font-black text-white font-mono mt-1">{avgXpPerMatch}</div>
+              <div className="text-2xl font-black text-white font-mono mt-1">
+                {avgXpPerMatch}
+              </div>
             </div>
 
             <div id="metric-box-maxxp" className="bg-[#111114] border border-[#2A2A2E] p-4 text-center rounded-none relative overflow-hidden group">
               <Flame className="w-4 h-4 text-slate-500 absolute top-3 right-3 opacity-60 group-hover:scale-110 transition-transform" />
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-display">Record XP Unico</div>
-              <div className="text-2xl font-black text-amber-400 font-mono mt-1">{maxSingleMatchXP}</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-display">Record XP Unique</div>
+              <div className="text-2xl font-black text-amber-400 font-mono mt-1">
+                {maxSingleMatchXP}
+              </div>
+            </div>
+          </div>
+
+          {/* Advanced Performance Grid */}
+          <div className="space-y-2">
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-display flex items-center gap-1.5 pt-1">
+              <Activity className="w-3.5 h-3.5 text-cosmic-accent" /> Statistiques Avancées de Jeu
+            </h3>
+            <div id="player-detail-advanced-metrics-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div id="metric-box-avgrank" className="bg-[#111114] border border-[#2A2A2E]/80 p-4 text-center rounded-none relative overflow-hidden group">
+                <Target className="w-4 h-4 text-indigo-400 absolute top-3 right-3 opacity-60 group-hover:scale-110 transition-transform" />
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-display">Rang Moyen</div>
+                <div className="text-2xl font-black text-indigo-400 font-mono mt-1">
+                  {avgRank}
+                </div>
+                <div className="text-[9px] text-slate-500 mt-0.5">Plus bas = Meilleur</div>
+              </div>
+
+              <div id="metric-box-podiumrate" className="bg-[#111114] border border-[#2A2A2E]/80 p-4 text-center rounded-none relative overflow-hidden group">
+                <Trophy className="w-4 h-4 text-teal-400 absolute top-3 right-3 opacity-60 group-hover:scale-110 transition-transform" />
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-display">Taux de Podium</div>
+                <div className="text-2xl font-black text-teal-400 font-mono mt-1">
+                  {podiumRate}%
+                </div>
+                <div className="text-[9px] text-slate-500 mt-0.5">Top 3 de la partie</div>
+              </div>
+
+              <div id="metric-box-streak" className="bg-[#111114] border border-[#2A2A2E]/80 p-4 text-center rounded-none relative overflow-hidden group">
+                <Flame className="w-4 h-4 text-rose-500 absolute top-3 right-3 opacity-60 group-hover:scale-110 transition-transform" />
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-display">Série de Victoires</div>
+                <div className="text-xl font-black text-rose-400 font-mono mt-1.5 flex items-baseline justify-center gap-1.5">
+                  <span className="text-rose-450 font-black">{currentStreak}</span>
+                  <span className="text-slate-600 text-xs font-normal">/</span>
+                  <span className="text-slate-400 text-xs font-semibold">{maxStreak} max</span>
+                </div>
+                <div className="text-[9px] text-slate-500 mt-0.5">En cours / Max</div>
+              </div>
+
+              <div id="metric-box-avgscoreleft" className="bg-[#111114] border border-[#2A2A2E]/80 p-4 text-center rounded-none relative overflow-hidden group">
+                <Skull className="w-4 h-4 text-amber-550 absolute top-3 right-3 opacity-60 group-hover:scale-110 transition-transform" />
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-display">Dernier Reste Moyen</div>
+                <div className="text-2xl font-black text-amber-500 font-mono mt-1">
+                  {avgScoreLeft !== null ? `${avgScoreLeft} pts` : "0 pts"}
+                </div>
+                <div className="text-[9px] text-slate-500 mt-0.5">Lors des défaites</div>
+              </div>
             </div>
           </div>
 
@@ -294,9 +409,9 @@ export default function PlayerDetailModal({
             const activeSelectedSeasons = sortedSeasons.filter(s => selectedSeasonIds.includes(s.id));
             const chartData = activeSelectedSeasons.map(s => {
               const seasonMatches = matches.filter(m => m.seasonId === s.id);
-              const playerSeasonMatches = seasonMatches.filter(m => m.participants.some(p => p.playerId === player.id));
+              const playerSeasonMatches = seasonMatches.filter(m => (m.participants || []).some(p => p.playerId === player.id));
               const total = playerSeasonMatches.length;
-              const wins = playerSeasonMatches.filter(m => m.participants.some(p => p.playerId === player.id && p.rank === 1)).length;
+              const wins = playerSeasonMatches.filter(m => (m.participants || []).some(p => p.playerId === player.id && p.rank === 1)).length;
               const rate = total > 0 ? Math.round((wins / total) * 100) : 0;
               return {
                 name: s.name,
@@ -323,7 +438,7 @@ export default function PlayerDetailModal({
                 <div id="chart-season-filters" className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-905">
                   {sortedSeasons.map((s) => {
                     const isVisible = selectedSeasonIds.includes(s.id);
-                    const isPlayed = matches.some(m => m.seasonId === s.id && m.participants.some(p => p.playerId === player.id));
+                    const isPlayed = matches.some(m => m.seasonId === s.id && (m.participants || []).some(p => p.playerId === player.id));
                     return (
                       <button
                         key={s.id}
@@ -402,7 +517,7 @@ export default function PlayerDetailModal({
                           {rank === 1 ? "🏆 1er (Victoire)" : `${rank}e Position`}
                         </span>
                         <span className="text-slate-300 font-bold">
-                          {isAdmin ? `${rCount} fois` : "🔒"} ({pct}%)
+                          {rCount} fois ({pct}%)
                         </span>
                       </div>
                       <div className="w-full bg-slate-950 h-1.5 rounded-none overflow-hidden">
@@ -427,19 +542,19 @@ export default function PlayerDetailModal({
                   <div className="bg-slate-950 p-2.5 border border-slate-850">
                     <span className="block text-[10px] text-slate-400 font-mono font-semibold uppercase tracking-wider">Simple</span>
                     <strong className="block text-base text-slate-200 mt-1">
-                      {isAdmin ? (finishTypesCount.SIMPLE || 0) : "🔒"}
+                      {finishTypesCount.SIMPLE || 0}
                     </strong>
                   </div>
                   <div className="bg-slate-950 p-2.5 border border-amber-500/10">
                     <span className="block text-[10px] text-amber-350 font-mono font-semibold uppercase tracking-wider">Double</span>
                     <strong className="block text-base text-amber-400 mt-1">
-                      {isAdmin ? (finishTypesCount.DOUBLE || 0) : "🔒"}
+                      {finishTypesCount.DOUBLE || 0}
                     </strong>
                   </div>
                   <div className="bg-slate-950 p-2.5 border border-cosmic-accent/10">
                     <span className="block text-[10px] text-cosmic-accent font-mono font-semibold uppercase tracking-wider">Triple</span>
                     <strong className="block text-base text-cosmic-accent mt-1">
-                      {isAdmin ? (finishTypesCount.TRIPLE || 0) : "🔒"}
+                      {finishTypesCount.TRIPLE || 0}
                     </strong>
                   </div>
                 </div>
@@ -452,13 +567,13 @@ export default function PlayerDetailModal({
                   <div>
                     <span className="text-slate-500 block text-[9.5px]">Némésis Récurrente :</span>
                     <strong className="text-white">
-                      {nemesisPlayer ? `${nemesisPlayer.name} (${isAdmin ? `${nemesisBeatsCount} défaites` : "🔒"})` : "Aucun rival direct"}
+                      {nemesisPlayer ? `${nemesisPlayer.name} (${nemesisBeatsCount} défaites)` : "Aucun rival direct"}
                     </strong>
                   </div>
                   <div>
                     <span className="text-slate-500 block text-[9.5px]">Cochambre d'entraînement :</span>
                     <strong className="text-white">
-                      {favoriteOpponent ? `${favoriteOpponent.name} (${isAdmin ? `${favoriteOpponentCount} matchs` : "🔒"})` : "Solo Dartos"}
+                      {favoriteOpponent ? `${favoriteOpponent.name} (${favoriteOpponentCount} matchs)` : "Solo Dartos"}
                     </strong>
                   </div>
                 </div>
@@ -535,7 +650,7 @@ export default function PlayerDetailModal({
                                 Close : {m.finishType}
                               </span>
                             )}
-                            {m.medals.map(med => (
+                            {(m.medals || []).map(med => (
                               <span
                                 key={med}
                                 className="px-1 text-[9px] bg-slate-900 border border-slate-800 font-mono text-slate-300"

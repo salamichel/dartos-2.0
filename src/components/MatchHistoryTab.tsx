@@ -69,7 +69,7 @@ export default function MatchHistoryTab({
           {filteredMatches.map(m => {
             const seasonName = seasons.find(s => s.id === m.seasonId)?.name || "Saison Inconnue";
             // Sort participants: rank ascending
-            const sortedParticipants = [...m.participants].sort((a,b) => a.rank - b.rank);
+            const sortedParticipants = [...(m.participants || [])].sort((a,b) => a.rank - b.rank);
 
             return (
               <div

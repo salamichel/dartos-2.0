@@ -33,7 +33,7 @@ export default function MatchEntryTab({
   useEffect(() => {
     if (editingMatch) {
       setPlayedAt(formatDateForInput(editingMatch.playedAt));
-      const sortedParts = [...editingMatch.participants].sort((a, b) => a.rank - b.rank);
+      const sortedParts = [...(editingMatch.participants || [])].sort((a, b) => a.rank - b.rank);
       const sIds = sortedParts.map(p => p.playerId);
       setSelectedIds(sIds);
 
@@ -152,7 +152,7 @@ export default function MatchEntryTab({
         if (editingMatch && m.id === editingMatch.id) return map;
         if (new Date(m.playedAt).getTime() >= matchDate.getTime()) return map;
 
-        m.participants.forEach(p => {
+        (m.participants || []).forEach(p => {
           map.set(p.playerId, (map.get(p.playerId) || 0) + p.xpEarned);
         });
         return map;
@@ -185,7 +185,7 @@ export default function MatchEntryTab({
         seasonXPsBeforeMap.set(p.id, 0);
       });
       activeSeasonMatchesBefore.forEach(m => {
-        m.participants.forEach(p => {
+        (m.participants || []).forEach(p => {
           const current = seasonXPsBeforeMap.get(p.playerId) || 0;
           seasonXPsBeforeMap.set(p.playerId, current + p.xpEarned);
         });

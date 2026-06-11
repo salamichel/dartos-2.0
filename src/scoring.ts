@@ -94,7 +94,7 @@ export function getSeasonPlayerXPs(seasonId: number, matches: Match[]): Map<numb
   const sorted = [...seasonMatches].sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
   
   for (const m of sorted) {
-    for (const p of m.participants) {
+    for (const p of m.participants || []) {
       const current = map.get(p.playerId) || 0;
       map.set(p.playerId, current + p.xpEarned);
     }
@@ -109,7 +109,7 @@ export function getPlayersCareerXPs(matches: Match[]): Map<number, number> {
   const map = new Map<number, number>();
   const sorted = [...matches].sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
   for (const m of sorted) {
-    for (const p of m.participants) {
+    for (const p of m.participants || []) {
       const current = map.get(p.playerId) || 0;
       map.set(p.playerId, current + p.xpEarned);
     }
@@ -132,12 +132,12 @@ export function countConsecutiveWinsBefore(
   
   // Get all previous matches for this player in this season, sorted newest to oldest
   const previousParticipants = seasonMatches
-    .filter(m => new Date(m.playedAt).getTime() < beforeTime && m.participants.some(p => p.playerId === playerId))
+    .filter(m => new Date(m.playedAt).getTime() < beforeTime && (m.participants || []).some(p => p.playerId === playerId))
     .sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
 
   let count = 0;
   for (const m of previousParticipants) {
-    const self = m.participants.find(p => p.playerId === playerId);
+    const self = (m.participants || []).find(p => p.playerId === playerId);
     if (self && self.rank === 1) {
       count++;
     } else {
