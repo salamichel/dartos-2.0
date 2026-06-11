@@ -16,10 +16,10 @@ interface SeasonsTabProps {
 }
 
 export default function SeasonsTab({
-  seasons,
-  players,
-  matches,
-  guilds,
+  seasons = [],
+  players = [],
+  matches = [],
+  guilds = [],
   onSeasonsUpdated,
   onShowToast,
   onShowConfirm,

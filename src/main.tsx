@@ -10,7 +10,7 @@ createRoot(document.getElementById('root')!).render(
 );
 
 // Google Analytics Integration
-const gaId = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-WEDLXSMZXK';
+const gaId = (import.meta as any).env?.VITE_GA_MEASUREMENT_ID || 'G-WEDLXSMZXK';
 if (gaId) {
   const scriptId = 'google-analytics';
   if (!document.getElementById(scriptId)) {

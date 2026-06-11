@@ -15,9 +15,9 @@ interface GuildsTabProps {
 }
 
 export default function GuildsTab({
-  players,
-  seasons,
-  matches,
+  players = [],
+  seasons = [],
+  matches = [],
   onGuildsUpdated,
   onShowToast,
   onShowConfirm,
@@ -153,7 +153,7 @@ export default function GuildsTab({
     // Rank Alliances based on Total collective XP
     formatted.sort((a,b) => b.collectiveXP - a.collectiveXP);
     setGuildsWithStats(formatted);
-  }, [players, matches]);
+  }, [players, matches, activeSeasonId]);
 
   const [loading, setLoading] = useState(false);
 

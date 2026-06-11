@@ -12,9 +12,9 @@ interface MatchHistoryTabProps {
 }
 
 export default function MatchHistoryTab({
-  players,
-  seasons,
-  matches,
+  players = [],
+  seasons = [],
+  matches = [],
   onDeleteMatch,
   onEditMatch
 }: MatchHistoryTabProps) {

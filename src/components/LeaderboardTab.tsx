@@ -37,10 +37,10 @@ interface LeaderboardTabProps {
 }
 
 export default function LeaderboardTab({
-  players,
-  seasons,
-  matches,
-  guilds,
+  players = [],
+  seasons = [],
+  matches = [],
+  guilds = [],
   selectedSeasonId,
   setSelectedSeasonId,
   onRecalculateSeason,

@@ -20,17 +20,19 @@ export default function PlayerDetailModal({
   player,
   isOpen,
   onClose,
-  matches,
-  players,
-  guilds,
-  seasons,
+  matches = [],
+  players = [],
+  guilds = [],
+  seasons = [],
   isAdmin = false
 }: PlayerDetailModalProps) {
   const [selectedSeasonIds, setSelectedSeasonIds] = React.useState<number[]>([]);
+  const [chartViewMode, setChartViewMode] = React.useState<"season" | "history">("history");
 
   // Synchronize state when open and player changes
   React.useEffect(() => {
     if (player) {
+      setChartViewMode("history");
       // Find seasons where player played at least once
       const playedIds = new Set<number>();
       matches.forEach(m => {
@@ -407,7 +409,9 @@ export default function PlayerDetailModal({
           {seasons.length > 0 && (() => {
             const sortedSeasons = [...seasons].sort((a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime());
             const activeSelectedSeasons = sortedSeasons.filter(s => selectedSeasonIds.includes(s.id));
-            const chartData = activeSelectedSeasons.map(s => {
+            
+            // 1. Season-by-season chart data
+            const seasonChartData = activeSelectedSeasons.map(s => {
               const seasonMatches = matches.filter(m => m.seasonId === s.id);
               const playerSeasonMatches = seasonMatches.filter(m => (m.participants || []).some(p => p.playerId === player.id));
               const total = playerSeasonMatches.length;
@@ -421,6 +425,29 @@ export default function PlayerDetailModal({
               };
             });
 
+            // 2. Match-by-match running cumulative win rate
+            const chronologicalMatches = [...playerMatches].reverse();
+            let runningWins = 0;
+            const historyChartData = chronologicalMatches.map((m, idx) => {
+              const selfSec = (m.participants || []).find(p => p.playerId === player.id);
+              const isWin = selfSec?.rank === 1;
+              if (isWin) {
+                runningWins++;
+              }
+              const totalPlayed = idx + 1;
+              const rate = Math.round((runningWins / totalPlayed) * 100);
+              const date = new Date(m.playedAt);
+              return {
+                label: `M${totalPlayed}`,
+                "Taux Cumulé": rate,
+                wins: runningWins,
+                totalPlayed: totalPlayed,
+                date: date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+                xp: selfSec?.xpEarned || 0,
+                outcome: isWin ? "Victoire 🏆" : `Rang ${selfSec?.rank || "N/A"}`
+              };
+            });
+
             return (
               <div id="player-win-rate-chart-card" className="bg-[#111114] border border-[#2A2A2E] p-4 rounded-none space-y-4 shadow-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -428,70 +455,141 @@ export default function PlayerDetailModal({
                     <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5 font-display font-semibold">
                       <TrendingUp className="w-4 h-4 text-cosmic-accent" /> Évolution du Ratio de Victoire
                     </h3>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      Suivez les performances au fil des saisons sélectionnées. Cliquez pour filtrer la liste :
+                  </div>
+                  
+                  {/* View mode toggle */}
+                  <div className="flex bg-slate-950 p-[3px] border border-[#2A2A2E] rounded-none self-start sm:self-center">
+                    <button
+                      type="button"
+                      onClick={() => setChartViewMode("history")}
+                      className={`px-3 py-1 text-[9px] font-mono font-bold uppercase tracking-wider transition-all rounded-none cursor-pointer ${
+                        chartViewMode === "history"
+                          ? "bg-[#FF3E3E] text-white"
+                          : "text-slate-500 hover:text-slate-300"
+                      }`}
+                    >
+                      📈 Par Match (Fil du Temps)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setChartViewMode("season")}
+                      className={`px-3 py-1 text-[9px] font-mono font-bold uppercase tracking-wider transition-all rounded-none cursor-pointer ${
+                        chartViewMode === "season"
+                          ? "bg-[#FF3E3E] text-white"
+                          : "text-slate-500 hover:text-slate-305"
+                      }`}
+                    >
+                      📊 Par Saisons
+                    </button>
+                  </div>
+                </div>
+
+                {chartViewMode === "history" ? (
+                  <>
+                    <p className="text-[10px] text-slate-400">
+                      Évolution chronologique du taux de victoires cumulé au fil des parties (historique match après match) :
                     </p>
-                  </div>
-                </div>
-
-                {/* Toggle season pill buttons */}
-                <div id="chart-season-filters" className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-905">
-                  {sortedSeasons.map((s) => {
-                    const isVisible = selectedSeasonIds.includes(s.id);
-                    const isPlayed = matches.some(m => m.seasonId === s.id && (m.participants || []).some(p => p.playerId === player.id));
-                    return (
-                      <button
-                        key={s.id}
-                        id={`chart-filter-season-${s.id}`}
-                        onClick={() => {
-                          if (isVisible) {
-                            setSelectedSeasonIds(prev => prev.filter(x => x !== s.id));
-                          } else {
-                            setSelectedSeasonIds(prev => [...prev, s.id]);
-                          }
-                        }}
-                        className={`px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-1.5 rounded-none ${
-                          isVisible
-                            ? "bg-slate-950 text-white border-cosmic-accent"
-                            : "bg-slate-950/20 text-slate-500 border-[#2A2A2E] hover:text-slate-400 hover:border-slate-850"
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 shrink-0 ${isVisible ? "bg-cosmic-accent" : "bg-slate-600"}`} />
-                        {s.name} {!isPlayed && " (0 m)"}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {chartData.length > 0 ? (
-                  <div id="player-chart-container-inner" className="h-[180px] w-full pt-1 select-none">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData} margin={{ top: 10, right: 15, left: -25, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1f1f23" />
-                        <XAxis dataKey="name" stroke="#55555c" fontSize={9} />
-                        <YAxis stroke="#55555c" fontSize={9} domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
-                        <Tooltip
-                          contentStyle={{ backgroundColor: "#111114", borderColor: "#2A2A2E", borderRadius: "0px" }}
-                          itemStyle={{ fontSize: 10, padding: 0 }}
-                          labelStyle={{ fontSize: 10, fontWeight: "bold", color: "#FF3E3E", marginBottom: 3 }}
-                          formatter={(value, name, props) => {
-                            const payload = props.payload;
-                            return [`${value}% (${payload.wins}/${payload.totalMatches} matches)`, name];
-                          }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="Taux de Victoires"
-                          stroke="#FF3E3E"
-                          strokeWidth={2.5}
-                          dot={{ r: 4, stroke: "#111114", strokeWidth: 1.5, fill: "#FF3E3E" }}
-                          activeDot={{ r: 6, strokeWidth: 1, fill: "#FF3E3E" }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                    
+                    {historyChartData.length > 0 ? (
+                      <div id="player-history-chart-container" className="h-[180px] w-full pt-1 select-none">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={historyChartData} margin={{ top: 10, right: 15, left: -25, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1f1f23" />
+                            <XAxis dataKey="label" stroke="#55555c" fontSize={8} />
+                            <YAxis stroke="#55555c" fontSize={9} domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
+                            <Tooltip
+                              contentStyle={{ backgroundColor: "#111114", borderColor: "#2A2A2E", borderRadius: "0px" }}
+                              itemStyle={{ fontSize: 10, padding: 0 }}
+                              labelStyle={{ fontSize: 10, fontFamily: "monospace", fontWeight: "bold", color: "#3dc7ff", marginBottom: 3 }}
+                              formatter={(value, name, props) => {
+                                const payload = props.payload;
+                                return [
+                                  `${value}% (${payload.wins}/${payload.totalPlayed} victoires)`,
+                                  `${payload.outcome} · ${payload.date}`
+                                ];
+                              }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="Taux Cumulé"
+                              stroke="#3dc7ff"
+                              strokeWidth={2}
+                              dot={{ r: historyChartData.length > 25 ? 1 : 2.5, stroke: "#111114", strokeWidth: 1, fill: "#3dc7ff" }}
+                              activeDot={{ r: 5, strokeWidth: 1, fill: "#3dc7ff" }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-500 italic text-center py-6">Aucun match joué à afficher.</p>
+                    )}
+                  </>
                 ) : (
-                  <p className="text-[11px] text-slate-400 italic text-center py-4">Sélectionnez au moins une saison pour afficher l'évolution.</p>
+                  <>
+                    <p className="text-[10px] text-slate-400">
+                      Performance par rapport aux saisons sélectionnées dans vos filtres de ligue :
+                    </p>
+
+                    {/* Toggle season pill buttons */}
+                    <div id="chart-season-filters" className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-905">
+                      {sortedSeasons.map((s) => {
+                        const isVisible = selectedSeasonIds.includes(s.id);
+                        const isPlayed = matches.some(m => m.seasonId === s.id && (m.participants || []).some(p => p.playerId === player.id));
+                        return (
+                          <button
+                            key={s.id}
+                            id={`chart-filter-season-${s.id}`}
+                            onClick={() => {
+                              if (isVisible) {
+                                setSelectedSeasonIds(prev => prev.filter(x => x !== s.id));
+                              } else {
+                                setSelectedSeasonIds(prev => [...prev, s.id]);
+                              }
+                            }}
+                            className={`px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-1.5 rounded-none ${
+                              isVisible
+                                ? "bg-slate-950 text-white border-cosmic-accent"
+                                : "bg-slate-950/20 text-slate-500 border-[#2A2A2E] hover:text-slate-400 hover:border-slate-850"
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 shrink-0 ${isVisible ? "bg-cosmic-accent" : "bg-slate-600"}`} />
+                            {s.name} {!isPlayed && " (0 m)"}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {seasonChartData.length > 0 ? (
+                      <div id="player-chart-container-inner" className="h-[180px] w-full pt-1 select-none">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={seasonChartData} margin={{ top: 10, right: 15, left: -25, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1f1f23" />
+                            <XAxis dataKey="name" stroke="#55555c" fontSize={9} />
+                            <YAxis stroke="#55555c" fontSize={9} domain={[0, 100]} tickFormatter={(val) => `${val}%`} />
+                            <Tooltip
+                              contentStyle={{ backgroundColor: "#111114", borderColor: "#2A2A2E", borderRadius: "0px" }}
+                              itemStyle={{ fontSize: 10, padding: 0 }}
+                              labelStyle={{ fontSize: 10, fontWeight: "bold", color: "#FF3E3E", marginBottom: 3 }}
+                              formatter={(value, name, props) => {
+                                const payload = props.payload;
+                                return [`${value}% (${payload.wins}/${payload.totalMatches} matches)`, name];
+                              }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="Taux de Victoires"
+                              stroke="#FF3E3E"
+                              strokeWidth={2.5}
+                              dot={{ r: 4, stroke: "#111114", strokeWidth: 1.5, fill: "#FF3E3E" }}
+                              activeDot={{ r: 6, strokeWidth: 1, fill: "#FF3E3E" }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 italic text-center py-4">Sélectionnez au moins une saison pour afficher l'évolution.</p>
+                    )}
+                  </>
                 )}
               </div>
             );

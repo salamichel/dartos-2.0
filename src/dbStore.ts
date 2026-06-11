@@ -1,9 +1,9 @@
-import { Player, Season, Match, Guild } from "./types";
+import { Player, Season, Match, Guild, MatchParticipant } from "./types";
 import { getPlayersCareerXPs, getSeasonPlayerXPs, calculateGuildRank, calculateMatchResults } from "./scoring";
 
 // Firebase imports
 import { initializeApp } from "firebase/app";
-import { collection, doc, onSnapshot, setDoc, deleteDoc, getDocFromServer, initializeFirestore } from "firebase/firestore";
+import { collection, doc, onSnapshot, setDoc, deleteDoc, getDocFromServer, initializeFirestore, writeBatch } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import firebaseConfig from "../firebase-applet-config.json";
 
@@ -50,6 +50,37 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
+}
+
+function areParticipantsEqual(a: MatchParticipant[] | undefined | null, b: MatchParticipant[] | undefined | null): boolean {
+  const arrA = a || [];
+  const arrB = b || [];
+  if (arrA.length !== arrB.length) return false;
+  for (let i = 0; i < arrA.length; i++) {
+    const pa = arrA[i];
+    const pb = arrB[i];
+    if (!pa || !pb) {
+      if (pa !== pb) return false;
+      continue;
+    }
+    if (pa.playerId !== pb.playerId) return false;
+    if (pa.rank !== pb.rank) return false;
+    if (pa.scoreLeft !== pb.scoreLeft) return false;
+    if (pa.xpBefore !== pb.xpBefore) return false;
+    if (pa.xpEarned !== pb.xpEarned) return false;
+    if (pa.xpBonusLotteryEarned !== pb.xpBonusLotteryEarned) return false;
+    if (pa.finishType !== pb.finishType) return false;
+    
+    const medalsA = pa.medals || [];
+    const medalsB = pb.medals || [];
+    if (medalsA.length !== medalsB.length) return false;
+    const sortedA = [...medalsA].sort();
+    const sortedB = [...medalsB].sort();
+    for (let j = 0; j < sortedA.length; j++) {
+      if (sortedA[j] !== sortedB[j]) return false;
+    }
+  }
+  return true;
 }
 
 const STORAGE_KEY = "dartos_db_v1";
@@ -643,6 +674,8 @@ class DartosDB {
       }
     }
 
+    const matchesToUpdate: Match[] = [];
+
     for (const m of seasonMatches) {
       const winnerPart = (m.participants || []).find(p => p.rank === 1);
       const loserParts = (m.participants || []).filter(p => p.rank > 1);
@@ -689,13 +722,14 @@ class DartosDB {
         seasonXPBeforeMap
       );
 
-      const updatedParticipants = (m.participants || []).map(p => {
+      const originalParticipants = m.participants || [];
+      const updatedParticipants = originalParticipants.map(p => {
         const recalc = recalculated.find(r => r.playerId === p.playerId);
         if (!recalc) return p;
 
         const lotteryBonus = p.xpBonusLotteryEarned || 0;
 
-        const finalMedals = [...recalc.medals];
+        const finalMedals = [...(recalc.medals || [])];
         const existingLotteryMedals = (p.medals || []).filter(med => med.startsWith("LOTTERY_WINNER:"));
         existingLotteryMedals.forEach(lotm => {
           if (!finalMedals.includes(lotm)) {
@@ -711,6 +745,7 @@ class DartosDB {
         };
       });
 
+      const hasChanged = !areParticipantsEqual(originalParticipants, updatedParticipants);
       m.participants = updatedParticipants;
 
       for (const p of m.participants || []) {
@@ -718,11 +753,26 @@ class DartosDB {
         simulatedSeasonXPs.set(p.playerId, (simulatedSeasonXPs.get(p.playerId) || 0) + p.xpEarned);
       }
 
-      // Write changes to Firestore
+      // Collect changes to write to Firestore ONLY if they actually changed
+      if (hasChanged) {
+        matchesToUpdate.push(m);
+      }
+    }
+
+    if (matchesToUpdate.length > 0) {
       try {
-        await setDoc(doc(db, "matches", m.id.toString()), m);
+        // Chunk write operations in batches of 100
+        const chunkSize = 100;
+        for (let i = 0; i < matchesToUpdate.length; i += chunkSize) {
+          const chunk = matchesToUpdate.slice(i, i + chunkSize);
+          const batch = writeBatch(db);
+          chunk.forEach(m => {
+            batch.set(doc(db, "matches", m.id.toString()), m);
+          });
+          await batch.commit();
+        }
       } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, `matches/${m.id}`);
+        handleFirestoreError(error, OperationType.WRITE, `matches/recalculate-batch`);
       }
     }
 

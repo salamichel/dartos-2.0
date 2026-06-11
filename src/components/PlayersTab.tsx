@@ -16,10 +16,10 @@ interface PlayersTabProps {
 }
 
 export default function PlayersTab({
-  players,
-  matches,
-  guilds,
-  seasons,
+  players = [],
+  matches = [],
+  guilds = [],
+  seasons = [],
   isAdmin = false,
   onPlayersUpdated,
   onShowToast

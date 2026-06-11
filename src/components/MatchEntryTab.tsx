@@ -15,9 +15,9 @@ interface MatchEntryTabProps {
 }
 
 export default function MatchEntryTab({
-  players,
-  seasons,
-  matches,
+  players = [],
+  seasons = [],
+  matches = [],
   onMatchRecorded,
   editingMatch,
   setEditingMatch
