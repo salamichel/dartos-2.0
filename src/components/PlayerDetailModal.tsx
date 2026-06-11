@@ -492,7 +492,7 @@ export default function PlayerDetailModal({
                     
                     {historyChartData.length > 0 ? (
                       <div id="player-history-chart-container" className="h-[180px] w-full pt-1 select-none">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <LineChart data={historyChartData} margin={{ top: 10, right: 15, left: -25, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#1f1f23" />
                             <XAxis dataKey="label" stroke="#55555c" fontSize={8} />
@@ -561,7 +561,7 @@ export default function PlayerDetailModal({
 
                     {seasonChartData.length > 0 ? (
                       <div id="player-chart-container-inner" className="h-[180px] w-full pt-1 select-none">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <LineChart data={seasonChartData} margin={{ top: 10, right: 15, left: -25, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#1f1f23" />
                             <XAxis dataKey="name" stroke="#55555c" fontSize={9} />

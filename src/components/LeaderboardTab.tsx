@@ -514,7 +514,7 @@ export default function LeaderboardTab({
 
           {/* Responsive Recharts Container */}
           <div id="chart-container-inner" className="h-[250px] w-full pt-1 select-none">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <LineChart data={chartData} margin={{ top: 10, right: 15, left: -25, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f1f23" />
                 <XAxis dataKey="name" stroke="#55555c" fontSize={9} />
