@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Calendar, Settings2, Sliders, ShieldAlert, BadgeInfo, BarChart, Users, Award, Percent, Flame, Medal, X, Crown } from "lucide-react";
+import { Plus, Edit, Trash2, Calendar, Settings2, Sliders, ShieldAlert, BadgeInfo, BarChart, Users, Award, Percent, Flame, Medal, X, Crown, Database, Upload, Download } from "lucide-react";
 import { Player, Season, Match, Guild, XPConfig } from "../types";
 import { SEASON_DEFAULTS } from "../scoring";
 import { dbStore } from "../dbStore";
@@ -516,6 +516,115 @@ export default function SeasonsTab({
           })}
         </ul>
       </div>
+
+      {/* BACKUP & RESTORE SECTION - ONLY VISIBLE TO ADMINS */}
+      {isAdmin && (
+        <div className="bg-[#111114] border border-[#2A2A2E] rounded-none overflow-hidden shadow-xl mt-6 p-5 space-y-4">
+          <div className="flex items-center gap-2 border-b border-[#2A2A2E]/50 pb-3">
+            <Database className="w-4 h-4 text-cosmic-accent" />
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300 font-display">
+              Sauvegardes de Sécurité & Restauration
+            </h3>
+          </div>
+
+          <p className="text-xs text-slate-400">
+            Exportez l’intégralité de vos classements, joueurs, saisons, guildes, et historiques de matchs sous forme de fichier JSON cryptographiquement conforme, ou réinstallez une sauvegarde antérieure.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            {/* Export block */}
+            <div className="bg-slate-950 p-4 border border-[#2A2A2E] flex flex-col justify-between space-y-3">
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 select-none">
+                  <Download className="w-3.5 h-3.5 text-emerald-400" />
+                  Exporter les Données
+                </h4>
+                <p className="text-[11px] text-[#88888F] mt-1">
+                  Télécharge un instantané complet de votre base de données Firestore en format JSON de manière 100% sécurisée et instantanée.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const json = dbStore.getBackupJSON();
+                    const blob = new Blob([json], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    const dateStr = new Date().toISOString().split("T")[0];
+                    link.href = url;
+                    link.download = `dartos-backup-${dateStr}.json`;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    onShowToast("Sauvegarde exportée avec succès ! ✓", "ok");
+                  } catch (err: any) {
+                    onShowToast(`Échec de l'exportation: ${err.message}`, "err");
+                  }
+                }}
+                className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-emerald-400 hover:text-emerald-300 font-bold uppercase tracking-wider text-[11px] border border-emerald-500/20 hover:border-emerald-500/40 rounded-none cursor-pointer transition text-center flex items-center justify-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Télécharger un Backup (.json)
+              </button>
+            </div>
+
+            {/* Import / Restore block */}
+            <div className="bg-slate-950 p-4 border border-[#2A2A2E] flex flex-col justify-between space-y-3">
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5 select-none">
+                  <Upload className="w-3.5 h-3.5 text-cosmic-accent" />
+                  Restaurer un Backup
+                </h4>
+                <p className="text-[11px] text-[#88888F] mt-1 text-red-500/80">
+                  ⚠️ Action irréversible. L'importation écrase toutes les collections existantes dans Firebase Firestore avec les données du fichier chargé.
+                </p>
+              </div>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    const ok = await onShowConfirm(
+                      `Êtes-vous absolument sûr de vouloir RESTAURER la sauvegarde "${file.name}" ?\n\nToutes les données actuelles de l'application seront écrasées de façon définitive !`
+                    );
+                    if (!ok) {
+                      e.target.value = ""; // reset input
+                      return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = async (evt) => {
+                      try {
+                        const content = evt.target?.result as string;
+                        onShowToast("Restauration de la base de données de secours...", "info");
+                        await dbStore.restoreBackup(content);
+                        onShowToast("Base de données restaurée avec succès ! ✓", "ok");
+                        onSeasonsUpdated();
+                      } catch (err: any) {
+                        onShowToast(`Échec de la restauration: ${err.message}`, "err");
+                      } finally {
+                        e.target.value = ""; // reset input
+                      }
+                    };
+                    reader.readAsText(file);
+                  }}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                />
+                <button
+                  type="button"
+                  className="w-full px-4 py-2.5 bg-slate-900 text-cosmic-accent font-bold uppercase tracking-wider text-[11px] border border-red-500/20 rounded-none flex items-center justify-center gap-1.5 pointer-events-none"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Sélectionner & Restaurer (.json)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SEASON STATISTICS DRAWER/MODAL DISPLAY */}
       {selectedSeasonForStats && stats && (

@@ -273,6 +273,132 @@ class DartosDB {
     this.saveLocalAndNotify();
   }
 
+  // --- Backup & Restore ---
+  getBackupJSON(): string {
+    const backup = {
+      version: 1,
+      timestamp: new Date().toISOString(),
+      data: {
+        players: this.state.players,
+        seasons: this.state.seasons,
+        matches: this.state.matches,
+        guilds: this.state.guilds,
+        adminPassword: this.state.adminPassword
+      }
+    };
+    return JSON.stringify(backup, null, 2);
+  }
+
+  async restoreBackup(backupContent: string): Promise<void> {
+    let parsed: any;
+    try {
+      parsed = JSON.parse(backupContent);
+    } catch (e) {
+      throw new Error("Le fichier backup n'est pas un JSON valide.");
+    }
+
+    if (!parsed || parsed.version !== 1 || !parsed.data) {
+      throw new Error("Format de sauvegarde invalide ou version non supportée.");
+    }
+
+    const { players, seasons, matches, guilds, adminPassword } = parsed.data;
+
+    if (!Array.isArray(players) || !Array.isArray(seasons) || !Array.isArray(matches) || !Array.isArray(guilds)) {
+      throw new Error("Les données de sauvegarde sont incomplètes ou corrompues.");
+    }
+
+    // Prepare arrays
+    const newPlayers = players as Player[];
+    const newSeasons = seasons as Season[];
+    const newMatches = matches as Match[];
+    const newGuilds = guilds as Guild[];
+
+    // 1. Delete all existing docs in current memory state to clear Firestore
+    const deleteBatch = writeBatch(db);
+    
+    // We clean players
+    for (const p of this.state.players) {
+      deleteBatch.delete(doc(db, "players", p.id.toString()));
+    }
+    // We clean seasons
+    for (const s of this.state.seasons) {
+      deleteBatch.delete(doc(db, "seasons", s.id.toString()));
+    }
+    // We clean matches
+    for (const m of this.state.matches) {
+      deleteBatch.delete(doc(db, "matches", m.id.toString()));
+    }
+    // We clean guilds
+    for (const g of this.state.guilds) {
+      deleteBatch.delete(doc(db, "guilds", g.id.toString()));
+    }
+
+    try {
+      await deleteBatch.commit();
+    } catch (error) {
+      console.warn("Erreur lors du nettoyage de la base de données: ", error);
+    }
+
+    // 2. Upload new records using writeBatches (chunked by 100 to stay under Firestore batch limits of 500)
+    let currentBatch = writeBatch(db);
+    let countInBatch = 0;
+
+    const commitBatchIfNeeded = async (force = false) => {
+      if (countInBatch >= 200 || (force && countInBatch > 0)) {
+        await currentBatch.commit();
+        currentBatch = writeBatch(db);
+        countInBatch = 0;
+      }
+    };
+
+    // Add players
+    for (const p of newPlayers) {
+      currentBatch.set(doc(db, "players", p.id.toString()), p);
+      countInBatch++;
+      await commitBatchIfNeeded();
+    }
+
+    // Add seasons
+    for (const s of newSeasons) {
+      currentBatch.set(doc(db, "seasons", s.id.toString()), s);
+      countInBatch++;
+      await commitBatchIfNeeded();
+    }
+
+    // Add matches
+    for (const m of newMatches) {
+      currentBatch.set(doc(db, "matches", m.id.toString()), m);
+      countInBatch++;
+      await commitBatchIfNeeded();
+    }
+
+    // Add guilds
+    for (const g of newGuilds) {
+      currentBatch.set(doc(db, "guilds", g.id.toString()), g);
+      countInBatch++;
+      await commitBatchIfNeeded();
+    }
+
+    // Add admin password if supplied
+    if (adminPassword) {
+      currentBatch.set(doc(db, "adminSettings", "config"), { adminPassword: adminPassword.trim() || "admin" });
+      countInBatch++;
+    }
+
+    // Final commit
+    await commitBatchIfNeeded(true);
+
+    // Save locally and refresh memory state
+    this.state.players = newPlayers.sort((a,b) => a.id - b.id);
+    this.state.seasons = newSeasons.sort((a,b) => a.id - b.id);
+    this.state.matches = newMatches.sort((a,b) => a.id - b.id);
+    this.state.guilds = newGuilds.sort((a,b) => a.id - b.id);
+    if (adminPassword) {
+      this.state.adminPassword = adminPassword;
+    }
+    this.saveLocalAndNotify();
+  }
+
   // --- Players ---
   getPlayers(): Player[] {
     return this.state.players;
