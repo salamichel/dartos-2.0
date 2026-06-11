@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { User, Trophy, Eye, Plus, Calendar, AlertCircle, Save } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Player, Season, Match, FinishType, MatchParticipant } from "../types";
-import { countConsecutiveWinsBefore, calculateMatchResults } from "../scoring";
+import { countConsecutiveWinsBefore, calculateMatchResults, calculatePlayerSeasonXPBeforeMatch, calculatePlayerCareerXPBeforeMatch } from "../scoring";
 import { dbStore } from "../dbStore";
 
 interface MatchEntryTabProps {
@@ -147,21 +147,23 @@ export default function MatchEntryTab({
     }
 
     try {
-      // Pull career XP strictly before this match's date (ignoring current edit and future matches)
-      const allPlayerCareerXPs = dbStore.getMatches().reduce((map, m) => {
-        if (editingMatch && m.id === editingMatch.id) return map;
-        if (new Date(m.playedAt).getTime() >= matchDate.getTime()) return map;
+      // Pull career XP strictly before this match's date (using helper functions)
+      const winnerCareerXPBefore = calculatePlayerCareerXPBeforeMatch(
+        winnerId,
+        matches,
+        matchDateStr,
+        editingMatch?.id
+      );
 
-        (m.participants || []).forEach(p => {
-          map.set(p.playerId, (map.get(p.playerId) || 0) + p.xpEarned);
-        });
-        return map;
-      }, new Map<number, number>());
-
-      const winnerCareerXPBefore = allPlayerCareerXPs.get(winnerId) || 0;
       const loserXPsBeforeMap = new Map<number, number>();
       survivors.forEach(id => {
-        loserXPsBeforeMap.set(id, allPlayerCareerXPs.get(id) || 0);
+        const xp = calculatePlayerCareerXPBeforeMatch(
+          id,
+          matches,
+          matchDateStr,
+          editingMatch?.id
+        );
+        loserXPsBeforeMap.set(id, xp);
       });
 
       // Count consecutive wins
@@ -173,22 +175,17 @@ export default function MatchEntryTab({
         editingMatch?.id
       );
 
-      // Compute season XPs before this match for Benjamin calculation
-      const activeSeasonMatchesBefore = matches.filter(m => {
-        if (m.seasonId !== activeSeason.id) return false;
-        if (editingMatch && m.id === editingMatch.id) return false;
-        return new Date(m.playedAt).getTime() < matchDate.getTime();
-      });
-
+      // Compute season XPs before this match for calculations (e.g. Benjamin, Giant Killer)
       const seasonXPsBeforeMap = new Map<number, number>();
       players.forEach(p => {
-        seasonXPsBeforeMap.set(p.id, 0);
-      });
-      activeSeasonMatchesBefore.forEach(m => {
-        (m.participants || []).forEach(p => {
-          const current = seasonXPsBeforeMap.get(p.playerId) || 0;
-          seasonXPsBeforeMap.set(p.playerId, current + p.xpEarned);
-        });
+        const xp = calculatePlayerSeasonXPBeforeMatch(
+          p.id,
+          activeSeason.id,
+          matches,
+          matchDateStr,
+          editingMatch?.id
+        );
+        seasonXPsBeforeMap.set(p.id, xp);
       });
 
       const calculatedParticipants = calculateMatchResults(

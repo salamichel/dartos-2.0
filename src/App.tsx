@@ -36,7 +36,6 @@ export default function App() {
 
   // Toasts
   const [toasts, setToasts] = useState<{ id: number; message: string; type: "ok" | "err" | "info" }[]>([]);
-  const [toastIdCounter, setToastIdCounter] = useState(0);
 
   // Confirm dialog
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -98,8 +97,7 @@ export default function App() {
 
   // Toast loop helper
   const showToast = (message: string, type: "ok" | "err" | "info" = "info") => {
-    const id = toastIdCounter;
-    setToastIdCounter(prev => prev + 1);
+    const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));

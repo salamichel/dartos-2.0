@@ -236,6 +236,7 @@ export function calculateMatchResults(
     medals: winnerMedals,
   });
 
+
   // Losers XP
   const scoreCounts = new Map<number, number>();
   losers.forEach(l => scoreCounts.set(l.scoreLeft, (scoreCounts.get(l.scoreLeft) || 0) + 1));
@@ -342,3 +343,69 @@ export function calculateGuildRank(
   }
   return { title: "Recrue", icon: "👤", slug: "recruit" };
 }
+
+/**
+ * Calculates a player's season XP strictly before a given match date (and ID, for tie-breaking)
+ */
+export function calculatePlayerSeasonXPBeforeMatch(
+  playerId: number,
+  seasonId: number,
+  matches: Match[],
+  playedAt: string,
+  excludeMatchId?: number
+): number {
+  const targetTime = new Date(playedAt).getTime();
+  let xp = 0;
+
+  const seasonMatches = matches.filter(m => m.seasonId === seasonId && m.id !== excludeMatchId);
+  for (const m of seasonMatches) {
+    const mTime = new Date(m.playedAt).getTime();
+    let isBefore = false;
+    if (mTime < targetTime) {
+      isBefore = true;
+    } else if (mTime === targetTime && excludeMatchId !== undefined && m.id !== undefined) {
+      isBefore = m.id < excludeMatchId;
+    }
+
+    if (isBefore) {
+      const part = (m.participants || []).find(p => p.playerId === playerId);
+      if (part) {
+        xp += part.xpEarned;
+      }
+    }
+  }
+  return xp;
+}
+
+/**
+ * Calculates a player's career XP strictly before a given match date (and ID, for tie-breaking)
+ */
+export function calculatePlayerCareerXPBeforeMatch(
+  playerId: number,
+  matches: Match[],
+  playedAt: string,
+  excludeMatchId?: number
+): number {
+  const targetTime = new Date(playedAt).getTime();
+  let xp = 0;
+
+  for (const m of matches) {
+    if (m.id === excludeMatchId) continue;
+    const mTime = new Date(m.playedAt).getTime();
+    let isBefore = false;
+    if (mTime < targetTime) {
+      isBefore = true;
+    } else if (mTime === targetTime && excludeMatchId !== undefined && m.id !== undefined) {
+      isBefore = m.id < excludeMatchId;
+    }
+
+    if (isBefore) {
+      const part = (m.participants || []).find(p => p.playerId === playerId);
+      if (part) {
+        xp += part.xpEarned;
+      }
+    }
+  }
+  return xp;
+}
+

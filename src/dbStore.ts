@@ -83,6 +83,10 @@ function areParticipantsEqual(a: MatchParticipant[] | undefined | null, b: Match
   return true;
 }
 
+function cleanUndefined<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj)) as T;
+}
+
 const STORAGE_KEY = "dartos_db_v1";
 
 interface DatabaseState {
@@ -117,7 +121,15 @@ class DartosDB {
         if (!this.state.seasons) this.state.seasons = [];
         if (!this.state.matches) this.state.matches = [];
         this.state.matches.forEach(m => {
-          if (!m.participants) m.participants = [];
+          m.participants = (m.participants || []).map(p => ({
+            ...p,
+            playerId: Number(p.playerId),
+            rank: Number(p.rank),
+            scoreLeft: p.scoreLeft !== null && p.scoreLeft !== undefined ? Number(p.scoreLeft) : null,
+            xpBefore: Number(p.xpBefore),
+            xpEarned: Number(p.xpEarned),
+            xpBonusLotteryEarned: p.xpBonusLotteryEarned !== undefined && p.xpBonusLotteryEarned !== null ? Number(p.xpBonusLotteryEarned) : undefined,
+          }));
         });
         if (!this.state.guilds) this.state.guilds = [];
         this.state.guilds.forEach(g => {
@@ -192,7 +204,15 @@ class DartosDB {
       snap.forEach(d => {
         const m = d.data() as Match;
         if (m) {
-          m.participants = m.participants || [];
+          m.participants = (m.participants || []).map(p => ({
+            ...p,
+            playerId: Number(p.playerId),
+            rank: Number(p.rank),
+            scoreLeft: p.scoreLeft !== null && p.scoreLeft !== undefined ? Number(p.scoreLeft) : null,
+            xpBefore: Number(p.xpBefore),
+            xpEarned: Number(p.xpEarned),
+            xpBonusLotteryEarned: p.xpBonusLotteryEarned !== undefined && p.xpBonusLotteryEarned !== null ? Number(p.xpBonusLotteryEarned) : undefined,
+          }));
           matches.push(m);
         }
       });
@@ -417,7 +437,7 @@ class DartosDB {
     };
 
     try {
-      await setDoc(doc(db, "players", player.id.toString()), player);
+      await setDoc(doc(db, "players", player.id.toString()), cleanUndefined(player));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `players/${player.id}`);
     }
@@ -442,7 +462,7 @@ class DartosDB {
     };
 
     try {
-      await setDoc(doc(db, "players", id.toString()), updated);
+      await setDoc(doc(db, "players", id.toString()), cleanUndefined(updated));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `players/${id}`);
     }
@@ -469,7 +489,7 @@ class DartosDB {
     };
 
     try {
-      await setDoc(doc(db, "seasons", newSeason.id.toString()), newSeason);
+      await setDoc(doc(db, "seasons", newSeason.id.toString()), cleanUndefined(newSeason));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `seasons/${newSeason.id}`);
     }
@@ -496,7 +516,7 @@ class DartosDB {
     } as Season;
 
     try {
-      await setDoc(doc(db, "seasons", id.toString()), updated);
+      await setDoc(doc(db, "seasons", id.toString()), cleanUndefined(updated));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `seasons/${id}`);
     }
@@ -543,20 +563,16 @@ class DartosDB {
     };
 
     try {
-      await setDoc(doc(db, "matches", newMatch.id.toString()), newMatch);
+      await setDoc(doc(db, "matches", newMatch.id.toString()), cleanUndefined(newMatch));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `matches/${newMatch.id}`);
     }
 
     this.state.matches.push(newMatch);
-    
-    // Auto-recalculate season to propagate consecutive wins and updated xpBefore correctly
-    await this.recalculateSeasonMatches(newMatch.seasonId);
 
     this.saveLocalAndNotify();
     
-    const recalculatedMatch = this.state.matches.find(m => m.id === newMatch.id) || newMatch;
-    return recalculatedMatch;
+    return newMatch;
   }
 
   async updateMatch(id: number, updatedData: Omit<Match, "id">): Promise<Match> {
@@ -568,7 +584,7 @@ class DartosDB {
     };
 
     try {
-      await setDoc(doc(db, "matches", id.toString()), updated);
+      await setDoc(doc(db, "matches", id.toString()), cleanUndefined(updated));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `matches/${id}`);
     }
@@ -630,7 +646,7 @@ class DartosDB {
     });
 
     try {
-      await setDoc(doc(db, "matches", matchId.toString()), cloned);
+      await setDoc(doc(db, "matches", matchId.toString()), cleanUndefined(cloned));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `matches/${matchId}`);
     }
@@ -664,7 +680,7 @@ class DartosDB {
     };
 
     try {
-      await setDoc(doc(db, "guilds", guild.id.toString()), guild);
+      await setDoc(doc(db, "guilds", guild.id.toString()), cleanUndefined(guild));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `guilds/${guild.id}`);
     }
@@ -691,7 +707,7 @@ class DartosDB {
     if (payload.badgeColor) cloned.badgeColor = payload.badgeColor.trim();
 
     try {
-      await setDoc(doc(db, "guilds", id.toString()), cloned);
+      await setDoc(doc(db, "guilds", id.toString()), cleanUndefined(cloned));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `guilds/${id}`);
     }
@@ -734,7 +750,7 @@ class DartosDB {
 
     try {
       for (const g of updatedGuilds) {
-        await setDoc(doc(db, "guilds", g.id.toString()), g);
+        await setDoc(doc(db, "guilds", g.id.toString()), cleanUndefined(g));
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `guilds/${guildId}`);
@@ -753,7 +769,7 @@ class DartosDB {
     cloned.memberIds = cloned.memberIds.filter(id => id !== playerId);
 
     try {
-      await setDoc(doc(db, "guilds", guildId.toString()), cloned);
+      await setDoc(doc(db, "guilds", guildId.toString()), cleanUndefined(cloned));
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `guilds/${guildId}`);
     }
@@ -826,11 +842,15 @@ class DartosDB {
       let consecutiveWins = 0;
       for (let i = currentIndexInSeason - 1; i >= 0; i--) {
         const prevMatch = seasonMatches[i];
-        const prevWinner = (prevMatch.participants || []).find(p => p.rank === 1);
-        if (prevWinner && prevWinner.playerId === winnerId) {
-          consecutiveWins++;
-        } else {
-          break;
+        const participants = prevMatch.participants || [];
+        const participated = participants.some(p => p.playerId === winnerId);
+        if (participated) {
+          const prevWinner = participants.find(p => p.rank === 1);
+          if (prevWinner && prevWinner.playerId === winnerId) {
+            consecutiveWins++;
+          } else {
+            break;
+          }
         }
       }
 
@@ -893,7 +913,7 @@ class DartosDB {
           const chunk = matchesToUpdate.slice(i, i + chunkSize);
           const batch = writeBatch(db);
           chunk.forEach(m => {
-            batch.set(doc(db, "matches", m.id.toString()), m);
+            batch.set(doc(db, "matches", m.id.toString()), cleanUndefined(m));
           });
           await batch.commit();
         }
