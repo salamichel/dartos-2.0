@@ -261,20 +261,24 @@ export default function GuildsTab({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="p-5 bg-[#111114] border border-[#2A2A2E] rounded-none box-glow">
-        <h2 className="text-xl font-bold font-display text-white tracking-wide uppercase">🛡️ Guildes & Alliances</h2>
+    <div className="space-y-4 md:space-y-6">
+      <div className="p-4 md:p-5 bg-[#111114] border border-[#2A2A2E] rounded-none box-glow">
+        <h2 className="text-lg md:text-xl font-bold font-display text-white tracking-wide uppercase flex items-center gap-2">
+          <span>🛡️</span> Guildes & Alliances
+        </h2>
         <p className="text-xs text-slate-400 mt-1">Créez des alliances, recrutez des joueurs, débloquez des exploits collectifs et dominez le panthéon.</p>
       </div>
 
-      {/* Alliance Rank Table */}
+      {/* Alliance Rank Table & Cards */}
       {guildsWithStats.length > 0 && (
-        <div className="bg-[#111114] border border-[#2A2A2E] rounded-none shadow-lg p-5 space-y-4">
+        <div className="bg-[#111114] border border-[#2A2A2E] rounded-none shadow-lg p-4 md:p-5 space-y-4">
           <h3 className="text-sm font-bold font-display text-white tracking-wider flex items-center gap-1.5 uppercase select-none">
             <Trophy className="w-4 h-4 text-amber-500" />
             Classement des Alliances ({guildsWithStats.length})
           </h3>
-          <div className="overflow-x-auto text-xs">
+          
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto text-xs">
             <table className="w-full text-left font-mono divide-y divide-[#2A2A2E]/60 leading-normal">
               <thead>
                 <tr className="bg-slate-950 text-slate-400 text-[10px] uppercase font-display select-none">
@@ -308,11 +312,41 @@ export default function GuildsTab({
               </tbody>
             </table>
           </div>
+
+          {/* Mobile Card-List View */}
+          <div className="block md:hidden space-y-3">
+            {guildsWithStats.map((gl, i) => {
+              const medalEmoji = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+              return (
+                <div key={gl.id} className="bg-slate-950/60 border border-[#2A2A2E]/50 p-3 flex flex-col gap-2 rounded-none">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 flex items-center justify-center font-black text-[10px] bg-[#16161A] border border-[#2A2A2E] text-slate-300">
+                        {medalEmoji || (i + 1)}
+                      </div>
+                      <span
+                        className="w-6 h-6 rounded-none flex items-center justify-center text-xs"
+                        style={{ backgroundColor: `${gl.badgeColor}20`, color: gl.badgeColor, border: `1px solid ${gl.badgeColor}35` }}
+                      >
+                        {gl.badgeIcon}
+                      </span>
+                      <strong className="text-white text-xs select-text">{gl.name}</strong>
+                    </div>
+                    <span className="text-xs font-black text-emerald-400 font-mono">{gl.collectiveXP.toLocaleString()} XP</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 select-text leading-relaxed bg-[#0c0c0e]/40 p-2 border border-[#2A2A2E]/20">
+                    <span className="text-slate-500 font-sans block mb-0.5 uppercase tracking-wider text-[8px] font-bold">Membres :</span>
+                    {gl.members.map(m => `${m.name} (${m.totalXP} XP)`).join(", ") || "Aucun participant actif"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
       {/* Guild creation form */}
-      <div id="guild-form-container" className="bg-[#111114] border border-[#2A2A2E] p-5 rounded-none">
+      <div id="guild-form-container" className="bg-[#111114] border border-[#2A2A2E] p-4 md:p-5 rounded-none">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-300 font-display mb-4 flex items-center gap-1.5">
           <Shield className="w-4 h-4 text-cosmic-accent" />
           {editingGuildId !== null ? "✏️ Éditer l'Alliance" : "⚡ Fonder une Guilde"}
@@ -329,7 +363,7 @@ export default function GuildsTab({
                 value={guildName}
                 onChange={(e) => setGuildName(e.target.value)}
                 placeholder="ex: Les Seigneurs du Bully 🎯"
-                className="bg-slate-950 border border-[#2A2A2E] text-xs text-slate-300 px-4 py-3 rounded-none focus:border-cosmic-accent/60 focus:outline-none placeholder:text-slate-700"
+                className="bg-slate-950 border border-[#2A2A2E] text-xs text-slate-300 px-3 py-3 rounded-none focus:border-cosmic-accent/60 focus:outline-none placeholder:text-slate-700 min-h-[44px]"
               />
             </div>
 
@@ -342,13 +376,13 @@ export default function GuildsTab({
                   maxLength={8}
                   value={badgeIcon}
                   onChange={(e) => setBadgeIcon(e.target.value)}
-                  className="bg-slate-950 border border-[#2A2A2E] text-center text-lg text-slate-300 px-3 py-2.5 rounded-none focus:outline-none"
+                  className="bg-slate-950 border border-[#2A2A2E] text-center text-lg text-slate-300 px-3 py-2 rounded-none focus:outline-none min-h-[44px]"
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Couleur Thème</label>
-                <div className="relative flex items-center h-[42px] bg-slate-950 border border-[#2A2A2E] rounded-none overflow-hidden">
+                <div className="relative flex items-center h-[44px] bg-slate-950 border border-[#2A2A2E] rounded-none overflow-hidden">
                   <input
                     type="color"
                     required
@@ -357,7 +391,7 @@ export default function GuildsTab({
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <div
-                    className="w-5 h-5 rounded-none border border-white/20 mx-auto"
+                    className="w-6 h-6 rounded-none border border-white/20 mx-auto"
                     style={{ backgroundColor: badgeColor }}
                   />
                 </div>
@@ -365,11 +399,11 @@ export default function GuildsTab({
             </div>
           </div>
 
-          <div className="flex gap-2.5 flex-wrap justify-between items-center pt-2">
-            <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+          <div className="flex gap-4 flex-col sm:flex-row justify-between items-stretch sm:items-center pt-2">
+            <div className="flex items-center justify-between sm:justify-start gap-2 text-xs text-slate-400 font-medium bg-[#16161A]/45 p-2 sm:p-0 border border-[#2A2A2E]/30 sm:border-transparent">
               <span>Prévisualisation :</span>
               <span
-                className="px-2.5 py-1 rounded-none border font-bold flex items-center gap-1.5 shadow"
+                className="px-3 py-1.5 rounded-none border font-bold flex items-center gap-1.5 shadow"
                 style={{ backgroundColor: `${badgeColor}15`, borderColor: `${badgeColor}40`, color: badgeColor }}
               >
                 <span>{badgeIcon}</span>
@@ -377,19 +411,19 @@ export default function GuildsTab({
               </span>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 justify-end">
               {editingGuildId !== null && (
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-4 py-2 border border-slate-800 hover:border-slate-700 bg-slate-900 text-xs text-slate-440 hover:text-slate-200 rounded-none cursor-pointer"
+                  className="px-5 py-3 sm:py-2 border border-slate-800 hover:border-slate-700 bg-slate-900 text-xs text-slate-300 hover:text-slate-100 rounded-none cursor-pointer flex-1 sm:flex-none text-center min-h-[44px] sm:min-h-[auto]"
                 >
                   Annuler
                 </button>
               )}
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-gradient-to-r from-cosmic-accent to-[#8E1E1E] hover:from-cosmic-accent/90 hover:to-[#8E1E1E]/90 text-white font-extrabold uppercase tracking-widest text-xs rounded-none border border-cosmic-accent/30 cursor-pointer shadow transform hover:-translate-y-0.5 active:translate-y-0 shadow-cosmic-accent/10 transition"
+                className="px-6 py-3 sm:py-2.5 bg-gradient-to-r from-cosmic-accent to-[#8E1E1E] hover:from-cosmic-accent/90 hover:to-[#8E1E1E]/90 text-white font-extrabold uppercase tracking-widest text-xs rounded-none border border-cosmic-accent/30 cursor-pointer shadow transform hover:-translate-y-0.5 active:translate-y-0 shadow-cosmic-accent/10 transition flex-1 sm:flex-none text-center min-h-[44px] sm:min-h-[auto]"
               >
                 {editingGuildId !== null ? "Mettre à jour" : "Créer le clan"}
               </button>
@@ -403,7 +437,7 @@ export default function GuildsTab({
       </div>
 
       {/* GUILD CARDS BENTO GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {guildsWithStats.length > 0 ? (
           guildsWithStats.map(gl => {
             const availableRecruits = players.filter(p => !gl.members.some(m => m.id === p.id));
@@ -416,69 +450,71 @@ export default function GuildsTab({
               >
                 {/* Decorative glowing overlay */}
                 <div
-                  className="absolute inset-0 pointer-events-none opacity-4 shadow-2xl"
+                  className="absolute inset-0 pointer-events-none opacity-5"
                   style={{
-                    background: `radial-gradient(ellipse at top right, ${gl.badgeColor}0d, transparent)`
+                    background: `radial-gradient(ellipse at top right, ${gl.badgeColor}0f, transparent)`
                   }}
                 />
 
                 {/* Header card segment */}
-                <div className="p-4 bg-slate-950/40 border-b border-[#2A2A2E]/40 flex justify-between items-start gap-4 flex-wrap">
-                  <div className="flex items-center gap-3">
+                <div className="p-3.5 sm:p-4 bg-slate-950/40 border-b border-[#2A2A2E]/40 flex justify-between items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <span
-                      className="w-10 h-10 rounded-none flex items-center justify-center text-xl shadow"
+                      className="w-9 h-9 rounded-none flex items-center justify-center text-lg shadow"
                       style={{ backgroundColor: `${gl.badgeColor}15`, border: `1px solid ${gl.badgeColor}40`, color: gl.badgeColor }}
                     >
                       {gl.badgeIcon}
                     </span>
                     <div>
-                      <h4 className="font-bold text-white text-base select-text">{gl.name}</h4>
-                      <span className="block text-[10px] text-slate-400 font-sans">
-                        {gl.members.length} compagnon(s) · <span className="text-emerald-400 font-extrabold text-[11px]">{gl.collectiveXP.toLocaleString()} XP d'Alliance</span>
+                      <h4 className="font-bold text-white text-sm md:text-base select-text">{gl.name}</h4>
+                      <span className="block text-[10px] text-slate-400 font-sans leading-tight mt-0.5">
+                        {gl.members.length} compagnon(s) · <span className="text-emerald-400 font-extrabold">{gl.collectiveXP.toLocaleString()} XP</span>
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 ml-auto">
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleEditGuild(gl)}
-                      className="p-1 px-2.5 text-[9px] uppercase font-bold text-slate-400 hover:text-white border border-slate-800 hover:border-[#2A2A2E] bg-slate-900 rounded-none cursor-pointer transition flex items-center gap-1"
+                      className="p-2 sm:p-1 sm:px-2.5 text-[10px] md:text-[9px] uppercase font-bold text-slate-455 hover:text-white border border-[#2A2A2E]/60 hover:border-[#2A2A2E] bg-slate-900 rounded-none cursor-pointer transition flex items-center gap-1 min-h-[36px] sm:min-h-0"
+                      title="Modifier la guilde"
                     >
-                      <Edit className="w-3 h-3 text-cosmic-accent" />
-                      Modifier
+                      <Edit className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-cosmic-accent" />
+                      <span className="hidden sm:inline">Modifier</span>
                     </button>
                     <button
                       onClick={() => handleDeleteGuild(gl.id, gl.name)}
-                      className="p-1 px-2 text-[9px] uppercase font-bold text-red-500 hover:text-red-400 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-none cursor-pointer transition flex items-center gap-1"
+                      className="p-2 sm:p-1 sm:px-2 text-[10px] md:text-[9px] uppercase font-bold text-red-500 hover:text-red-400 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 rounded-none cursor-pointer transition flex items-center gap-1 min-h-[36px] sm:min-h-0"
+                      title="Dissoudre la guilde"
                     >
-                      <Trash2 className="w-3 h-3" />
-                      Dissoudre
+                      <Trash2 className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                      <span className="hidden sm:inline">Dissoudre</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Body details container */}
-                <div className="p-5 flex-1 flex flex-col gap-5">
+                <div className="p-4 sm:p-5 flex-1 flex flex-col gap-4 sm:gap-5">
                   {/* achievements segment */}
-                  <div className="space-y-2">
-                    <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                  <div className="space-y-1.5">
+                    <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1 select-none">
                       <Star className="w-3 h-3 text-amber-500 animate-pulse" />
                       Hauts Faits Collectifs
                     </h5>
-                    <div className="flex flex-wrap gap-2 pt-1 font-sans">
+                    <div className="grid grid-cols-2 md:flex md:flex-wrap gap-1.5 pt-1 font-sans">
                       {gl.achievements.map(ach => {
                         return (
                           <span
                              key={ach.id}
-                             className={`p-1.5 px-2 rounded-none text-[10px] border flex items-center gap-1 shrink-0 ${
+                             className={`p-1.5 px-2 rounded-none text-[9px] md:text-[10px] border flex items-center gap-1 shrink-0 ${
                                ach.unlocked
-                                 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-305 font-bold"
-                                 : "bg-slate-950/40 border-[#2A2A2E]/50 text-slate-600 line-through decoration-slate-700 font-semibold"
+                                 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 font-bold"
+                                 : "bg-slate-950/40 border-[#2A2A2E]/50 text-slate-650 line-through decoration-slate-700 font-semibold"
                              }`}
                              title={ach.description}
                           >
                             <span>{ach.icon}</span>
-                            <span>{ach.title}</span>
+                            <span className="truncate">{ach.title}</span>
                           </span>
                         );
                       })}
@@ -486,18 +522,18 @@ export default function GuildsTab({
                   </div>
 
                   {/* roster listings segment */}
-                  <div className="space-y-2 border-t border-[#2A2A2E]/40 pt-4 flex-1">
+                  <div className="space-y-1.5 border-t border-[#2A2A2E]/40 pt-4 flex-1">
                     <h5 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1 select-none">
                       <Users className="w-3 h-3 text-cosmic-accent" />
                       Compagnons de Rangs
                     </h5>
-                    <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 no-scrollbar md:scrollbar">
                       {gl.members.length > 0 ? (
                         gl.members.map(m => {
                           return (
-                            <div key={m.id} className="flex justify-between items-center hover:bg-[#16161A] p-1 rounded-none transition-colors text-xs">
+                            <div key={m.id} className="flex justify-between items-center hover:bg-[#16161A] p-2 md:p-1 rounded-none transition-colors text-xs border border-transparent hover:border-[#2A2A2E]/30">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm" title={m.guildRank}>{m.guildRankIcon}</span>
+                                <span className="text-base" title={m.guildRank}>{m.guildRankIcon}</span>
                                 <div>
                                   <strong className="text-white select-text font-serif">{m.name}</strong>
                                   <span className="block text-[10px] text-[#88888e] leading-none mt-0.5">
@@ -508,10 +544,10 @@ export default function GuildsTab({
 
                               <button
                                 onClick={() => handleExcludeMember(gl.id, m.id, m.name)}
-                                className="p-1 text-slate-550 hover:text-red-400 shrink-0 cursor-pointer rounded-none hover:bg-red-500/5 transition"
+                                className="p-2 text-slate-400 hover:text-red-400 shrink-0 cursor-pointer rounded-none hover:bg-red-500/5 transition min-h-[36px] min-w-[36px] flex items-center justify-center"
                                 title="Exclure ce compagnon"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           );
@@ -525,11 +561,11 @@ export default function GuildsTab({
                   {/* recruitment selector dropdown */}
                   <div className="border-t border-[#2A2A2E]/40 pt-4">
                     {availableRecruits.length > 0 ? (
-                      <div className="relative flex items-center w-full">
+                      <div className="relative flex items-center w-full min-h-[44px]">
                         <select
                           value=""
                           onChange={(e) => handleRecruitMember(gl.id, e.target.value)}
-                          className="bg-slate-950 border border-[#2A2A2E] hover:border-cosmic-accent/30 text-slate-300 font-bold text-xs px-3 py-2 rounded-none focus:outline-none w-full cursor-pointer pr-8 font-sans"
+                          className="bg-slate-950 border border-[#2A2A2E] hover:border-cosmic-accent/30 text-slate-300 font-bold text-xs px-3 py-3 rounded-none focus:outline-none w-full cursor-pointer pr-10 font-sans min-h-[44px]"
                         >
                           <option value="">➕ Recruter un joueur...</option>
                           {availableRecruits.map(p => (
@@ -549,7 +585,7 @@ export default function GuildsTab({
             );
           })
         ) : (
-          <div className="col-span-1 md:col-span-2 p-8 bg-[#111114]/50 border border-[#2A2A2E] rounded-none text-center text-slate-400 text-xs select-none font-semibold">
+          <div className="col-span-1 lg:col-span-2 p-8 bg-[#111114]/50 border border-[#2A2A2E] rounded-none text-center text-slate-400 text-xs select-none font-semibold">
             Aucune guilde n'a encore été construite. Fondez la toute première guilde grâce au configurateur ci-dessus !
           </div>
         )}

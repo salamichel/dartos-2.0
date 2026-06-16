@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Info, Lock, Unlock, ShieldAlert, Sparkles, Trophy, Award, Calendar, RefreshCw, X } from "lucide-react";
+import { Info, Lock, Unlock, ShieldAlert, Sparkles, Trophy, Award, Calendar, RefreshCw, X, History, Shield, Users, Swords } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { dbStore } from "./dbStore";
 import { Player, Season, Match, Guild } from "./types";
@@ -218,7 +218,7 @@ export default function App() {
   const activeSeasonForCelebration = recordedMatch ? seasons.find(s => s.id === recordedMatch.seasonId) : null;
 
   return (
-    <div className="min-h-screen bg-cosmic-bg text-slate-100 flex flex-col font-sans select-none pb-8 antialiased relative overflow-x-hidden md:border-8 md:border-slate-900">
+    <div className="min-h-screen bg-cosmic-bg text-slate-100 flex flex-col font-sans select-none pb-24 md:pb-8 antialiased relative overflow-x-hidden md:border-8 md:border-slate-900">
       {/* Decorative dot matrix grid background from the theme */}
       <div className="absolute inset-0 artistic-grid opacity-10 pointer-events-none z-0" />
       
@@ -271,12 +271,12 @@ export default function App() {
         {/* NAVIGATION MENUS */}
         <nav className="flex items-center gap-1.5 py-4 overflow-x-auto no-scrollbar font-display">
           {[
-            { id: "leaderboard", label: "Classement", emoji: "🏆" },
-            { id: "match", label: "Saisir Match", emoji: "⚔️" },
-            { id: "matches", label: "Historique", emoji: "📜" },
-            { id: "players", label: "Joueurs", emoji: "👤" },
-            { id: "guilds", label: "Guildes", emoji: "🛡️" },
-            { id: "seasons", label: "Saisons", emoji: "🏟️" }
+            { id: "leaderboard", label: "Classement", emoji: "🏆", mobileVisible: true },
+            { id: "match", label: "Saisir Match", emoji: "⚔️", mobileVisible: false },
+            { id: "matches", label: "Historique", emoji: "📜", mobileVisible: false },
+            { id: "players", label: "Joueurs", emoji: "👤", mobileVisible: false },
+            { id: "guilds", label: "Guildes", emoji: "🛡️", mobileVisible: false },
+            { id: "seasons", label: "Saisons", emoji: "🏟️", mobileVisible: true }
           ].map(tab => {
             const isActive = activeTab === tab.id;
             return (
@@ -284,6 +284,8 @@ export default function App() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`px-4 py-2.5 text-xs font-bold uppercase tracking-wider rounded-none border transition cursor-pointer select-none shrink-0 ${
+                  tab.mobileVisible ? "flex" : "hidden md:flex"
+                } items-center ${
                   isActive
                     ? "bg-[#16161A] text-white border-l-2 border-l-cosmic-accent border-[#2A2A2E] shadow-[0_0_15px_rgba(255,62,62,0.1)] font-extrabold"
                     : "bg-[#0F0F12]/80 border-[#2A2A2E]/50 hover:border-[#2A2A2E] text-slate-400 hover:text-white"
@@ -497,7 +499,7 @@ export default function App() {
       </footer>
 
       {/* GLOBAL FLOATING TOASTS PANEL */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm select-none">
+      <div className="fixed bottom-24 md:bottom-4 right-4 left-4 md:left-auto z-50 flex flex-col gap-2 pointer-events-none max-w-sm select-none">
         <AnimatePresence>
           {toasts.map(t => (
             <motion.div
@@ -559,6 +561,49 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0F0F12]/95 backdrop-blur-md border-t border-[#2A2A2E] h-16 flex items-center justify-around pb-safe md:hidden select-none">
+        {[
+          { id: "matches", label: "Historique", icon: <History className="w-5 h-5" /> },
+          { id: "guilds", label: "Guilde", icon: <Shield className="w-5 h-5" /> },
+          { id: "players", label: "Joueurs", icon: <Users className="w-5 h-5" /> }
+        ].map(tab => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex flex-col items-center justify-center flex-1 h-full py-1 gap-1 border-t-2 transition-all cursor-pointer ${
+                isActive
+                  ? "border-t-cosmic-accent text-white font-extrabold bg-[#16161A]/50"
+                  : "border-t-transparent text-slate-400 hover:text-white"
+              }`}
+            >
+              <div className={`transition-transform duration-200 ${isActive ? "text-cosmic-accent scale-110" : "text-slate-400"}`}>
+                {tab.icon}
+              </div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider font-display">
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* MOBILE FLOATING ACTION BUTTON */}
+      <button
+        onClick={() => {
+          setEditingMatch(null);
+          setActiveTab("match");
+        }}
+        className={`fixed bottom-20 right-4 z-40 p-4 rounded-full bg-gradient-to-r from-cosmic-accent to-[#BF2A2A] text-white cursor-pointer shadow-[0_0_20px_rgba(255,62,62,0.4)] hover:shadow-[0_0_25px_rgba(255,62,62,0.6)] md:hidden transition-all duration-300 active:scale-95 flex items-center justify-center border border-cosmic-accent/30 ${
+          activeTab === "match" ? "scale-110 rotate-45 bg-[#BF2A2A]" : ""
+        }`}
+        title="Saisir un match"
+      >
+        <Swords className="w-6 h-6" />
+      </button>
     </div>
   );
 }
