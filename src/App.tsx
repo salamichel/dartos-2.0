@@ -269,7 +269,7 @@ export default function App() {
         </div>
 
         {/* NAVIGATION MENUS */}
-        <nav className="flex items-center gap-1.5 py-4 overflow-x-auto no-scrollbar font-display">
+        <nav className="hidden md:flex items-center gap-1.5 py-4 overflow-x-auto no-scrollbar font-display">
           {[
             { id: "leaderboard", label: "Classement", emoji: "🏆", mobileVisible: true },
             { id: "match", label: "Saisir Match", emoji: "⚔️", mobileVisible: false },
@@ -563,11 +563,13 @@ export default function App() {
       </AnimatePresence>
 
       {/* MOBILE BOTTOM NAVIGATION */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0F0F12]/95 backdrop-blur-md border-t border-[#2A2A2E] h-16 flex items-center justify-around pb-safe md:hidden select-none">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#9E1A1A] border-t border-[#BF2A2A] h-16 flex items-center justify-around pb-safe md:hidden select-none shadow-[0_-4px_15px_rgba(158,26,26,0.3)]">
         {[
+          { id: "leaderboard", label: "Classement", icon: <Trophy className="w-5 h-5" /> },
           { id: "matches", label: "Historique", icon: <History className="w-5 h-5" /> },
           { id: "guilds", label: "Guilde", icon: <Shield className="w-5 h-5" /> },
-          { id: "players", label: "Joueurs", icon: <Users className="w-5 h-5" /> }
+          { id: "players", label: "Joueurs", icon: <Users className="w-5 h-5" /> },
+          { id: "seasons", label: "Saison", icon: <Calendar className="w-5 h-5" /> }
         ].map(tab => {
           const isActive = activeTab === tab.id;
           return (
@@ -576,14 +578,14 @@ export default function App() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex flex-col items-center justify-center flex-1 h-full py-1 gap-1 border-t-2 transition-all cursor-pointer ${
                 isActive
-                  ? "border-t-cosmic-accent text-white font-extrabold bg-[#16161A]/50"
-                  : "border-t-transparent text-slate-400 hover:text-white"
+                  ? "border-t-white text-white font-extrabold bg-black/15"
+                  : "border-t-transparent text-red-200 hover:text-white"
               }`}
             >
-              <div className={`transition-transform duration-200 ${isActive ? "text-cosmic-accent scale-110" : "text-slate-400"}`}>
+              <div className={`transition-transform duration-200 ${isActive ? "text-white scale-110" : "text-red-200"}`}>
                 {tab.icon}
               </div>
-              <span className="text-[10px] font-semibold uppercase tracking-wider font-display">
+              <span className="text-[9px] font-bold uppercase tracking-wide font-display truncate max-w-full px-0.5">
                 {tab.label}
               </span>
             </button>
