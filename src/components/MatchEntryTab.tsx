@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Player, Season, Match, FinishType, MatchParticipant } from "../types";
 import { countConsecutiveWinsBefore, calculateMatchResults, calculatePlayerSeasonXPBeforeMatch, calculatePlayerCareerXPBeforeMatch } from "../scoring";
 import { dbStore } from "../dbStore";
+import TeamCombatTab from "./TeamCombatTab";
 
 interface MatchEntryTabProps {
   players: Player[];
@@ -22,6 +23,7 @@ export default function MatchEntryTab({
   editingMatch,
   setEditingMatch
 }: MatchEntryTabProps) {
+  const [gameMode, setGameMode] = useState<"classic" | "team_combat">("classic");
   const [playedAt, setPlayedAt] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [winnerFinish, setWinnerFinish] = useState<FinishType>("DOUBLE");
@@ -32,6 +34,7 @@ export default function MatchEntryTab({
   // In case of editing, pre-fill form
   useEffect(() => {
     if (editingMatch) {
+      setGameMode("classic");
       setPlayedAt(formatDateForInput(editingMatch.playedAt));
       const sortedParts = [...(editingMatch.participants || [])].sort((a, b) => a.rank - b.rank);
       const sIds = sortedParts.map(p => p.playerId);
@@ -235,12 +238,54 @@ export default function MatchEntryTab({
 
   return (
     <div className="space-y-6">
-      <div className="p-5 bg-[#111114] border border-[#2A2A2E] rounded-none box-glow">
-        <h2 className="text-xl font-bold font-display text-white tracking-wide uppercase">
-          {editingMatch ? `✏️ Modifier le match #${editingMatch.id}` : "⚔️ Enregistrer un match terminé"}
-        </h2>
-        <p className="text-xs text-slate-400 mt-1">Saisissez les résultats de la bataille 301. Le premier sélectionné est le vainqueur !</p>
-      </div>
+      {/* Game Mode Selector */}
+      {!editingMatch && (
+        <div className="grid grid-cols-2 gap-4 pb-2">
+          <button
+            type="button"
+            onClick={() => setGameMode("classic")}
+            className={`p-4 border text-center transition cursor-pointer rounded-none flex flex-col items-center justify-center ${
+              gameMode === "classic"
+                ? "bg-[#111114] border-cosmic-accent text-white font-black shadow-md shadow-cosmic-accent/5"
+                : "bg-slate-950/50 border-[#2A2A2E]/60 text-slate-400 hover:text-white"
+            }`}
+          >
+            <span className="text-xl">🏆</span>
+            <span className="text-xs uppercase tracking-wider font-extrabold font-display mt-1">Saisie Classique (Solo)</span>
+            <span className="block text-[10px] text-slate-500 mt-1">Saisie rapide d'un match de ligue terminé</span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => setGameMode("team_combat")}
+            className={`p-4 border text-center transition cursor-pointer rounded-none flex flex-col items-center justify-center ${
+              gameMode === "team_combat"
+                ? "bg-[#111114] border-cosmic-accent text-white font-black shadow-md shadow-cosmic-accent/5"
+                : "bg-slate-950/50 border-[#2A2A2E]/60 text-slate-400 hover:text-white"
+            }`}
+          >
+            <span className="text-xl">⚔️</span>
+            <span className="text-xs uppercase tracking-wider font-extrabold font-display mt-1">Combat en Équipe (Live)</span>
+            <span className="block text-[10px] text-slate-500 mt-1">Générateur d'alliances, quêtes et pouvoirs !</span>
+          </button>
+        </div>
+      )}
+
+      {gameMode === "team_combat" && !editingMatch ? (
+        <TeamCombatTab
+          players={players}
+          seasons={seasons}
+          matches={matches}
+          onMatchRecorded={onMatchRecorded}
+        />
+      ) : (
+        <>
+          <div className="p-5 bg-[#111114] border border-[#2A2A2E] rounded-none box-glow">
+            <h2 className="text-xl font-bold font-display text-white tracking-wide uppercase">
+              {editingMatch ? `✏️ Modifier le match #${editingMatch.id}` : "⚔️ Enregistrer un match terminé"}
+            </h2>
+            <p className="text-xs text-slate-400 mt-1">Saisissez les résultats de la bataille 301. Le premier sélectionné est le vainqueur !</p>
+          </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Date override element */}
@@ -353,6 +398,8 @@ export default function MatchEntryTab({
                         <span className="text-xs text-slate-450 font-medium font-sans">Score restant au compteur :</span>
                         <input
                           type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           required
                           value={scoresLeft[id] || ""}
                           onChange={(e) => handleScoreChange(id, e.target.value)}
@@ -403,6 +450,8 @@ export default function MatchEntryTab({
           </button>
         </div>
       </form>
+      </>
+      )}
     </div>
   );
 }

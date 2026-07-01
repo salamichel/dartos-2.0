@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Info, X, ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
-export const SPLASH_VERSION = "2.10";
+export const SPLASH_VERSION = "2.20";
 const STORAGE_KEY = "dartos_splash_seen_v2";
 
 interface SplashModalProps {
@@ -134,37 +134,37 @@ export default function SplashModal({ forceOpen = false, onClose }: SplashModalP
       )
     },
     {
-      emoji: "⚖️",
-      title: "Maj d'Équilibrage",
-      sub: "L'XP plus juste et tactique !",
+      emoji: "👥",
+      title: "Mode Combat d'Équipe",
+      sub: "Deux armées d'archers face à face ! ⚔️",
       content: (
         <div className="space-y-2.5 prose prose-invert max-w-sm mx-auto text-xs text-slate-300">
-          <p className="text-center">
-            Cette version apporte des équilibrages majeurs sur les calculs d'XP :
+          <p className="text-center leading-relaxed">
+            Affrontez-vous en équipes rouges <span className="text-red-400 font-bold">Crimson 🔴</span> contre bleues <span className="text-blue-400 font-bold">Cobalt 🔵</span> avec des mécaniques uniques :
           </p>
           <div className="bg-[#111114] p-3 rounded-none border border-[#2A2A2E] flex flex-col gap-2.5 shadow-inner text-left">
             <div className="flex items-start gap-2">
-              <span className="text-amber-400">🐉</span>
+              <span className="text-red-400">🔴</span>
               <div>
-                <strong className="text-white">Tueur de Géants & Phénix</strong> : Comparés à l'<strong>XP de la saison</strong> (et non plus de la carrière). Plus représentatif de la forme actuelle de vos adversaires !
+                <strong className="text-white">Score Collectif Partagé</strong> : Les coéquipiers réduisent un compteur de score unique de 301 ou 501 points. Le premier camp à zéro l'emporte !
               </div>
             </div>
             <div className="flex items-start gap-2 border-t border-slate-800/40 pt-2">
-              <span className="text-emerald-400">📈</span>
+              <span className="text-amber-400">📜</span>
               <div>
-                <strong className="text-white">Bonus de Niveau (+25%)</strong> : Battre un joueur mieux classé à la saison offre d'immenses gains de <strong className="text-emerald-400 font-mono">+25% par palier de différence</strong> (ex: Niv 1 bat Niv 3 = +50%).
+                <strong className="text-white">Tableau des Quêtes</strong> : Réalisez de vrais exploits physiques sur votre cible (Double, Triple, Bullseye) pour débloquer des cartes magiques.
               </div>
             </div>
             <div className="flex items-start gap-2 border-t border-slate-800/40 pt-2">
-              <span className="text-purple-400">🥉</span>
+              <span className="text-purple-400">🔮</span>
               <div>
-                <strong className="text-white">Médaille Benjamin plus rare</strong> : Réservée au dernier de la partie s'il a démarré avec le plus faible XP parmi les participants du match ET s'il finit à moins de 50 pts restants !
+                <strong className="text-white">Sortilèges Destructeurs</strong> : Dépensez vos cartes pour handicaper l'adverse (Lancer Aveugle, Mauvaise main, Recul d'un mètre) !
               </div>
             </div>
           </div>
         </div>
       )
-    },
+    },    
     {
       emoji: "🏆",
       title: "Rejoignez la Légende !",

@@ -64,6 +64,9 @@ export function getMedalIcon(m: string): string {
     const emoji = m.split(":")[1];
     return "🍀" + emoji;
   }
+  if (m.startsWith("BOURSE_PX:")) {
+    return "💰";
+  }
   return MEDALS_MAP[m] || m;
 }
 
@@ -71,6 +74,10 @@ export function getMedalTitle(m: string): string {
   if (m.startsWith("LOTTERY_WINNER:")) {
     const emoji = m.split(":")[1];
     return `Gagnant Tombola (${emoji}) !`;
+  }
+  if (m.startsWith("BOURSE_PX:")) {
+    const amount = m.split(":")[1];
+    return `Bourse d'Équipe (+${amount} PX)`;
   }
   switch (m) {
     case "POULIDOR": return "Poulidor (Finit à < 10 pts)";
@@ -194,7 +201,7 @@ export function calculateMatchResults(
   else if (finishType === "DOUBLE") finishBonus = config.xpBonusDouble;
 
   // Vampire multiplier
-  const vampireXP = totalScoreLeft * config.xpVampireMultiplier;
+  const vampireXP = Math.round(totalScoreLeft * config.xpVampireMultiplier);
 
   let winnerXP = xpFromLosers + finishBonus + vampireXP;
   const winnerMedals: string[] = [];
