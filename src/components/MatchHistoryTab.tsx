@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { Filter, Calendar, RefreshCw, Trash2, Edit, Clock } from "lucide-react";
 import { Match, Season, Player, MatchLog } from "../types";
-import { getMedalIcon, getMedalTitle } from "../scoring";
+import { getMedalIcon, getMedalTitle, getLevelIndex } from "../scoring";
 
 interface MatchHistoryTabProps {
   players: Player[];
@@ -25,6 +25,154 @@ export default function MatchHistoryTab({
   const [filterSeasonId, setFilterSeasonId] = useState<number | "">("");
   const [filteredMatches, setFilteredMatches] = useState<Match[]>([]);
   const [viewMode, setViewMode] = useState<"matches" | "logs">("matches");
+  const [expandedWinnerXp, setExpandedWinnerXp] = useState<Record<number, boolean>>({});
+
+  const toggleWinnerXp = (matchId: number) => {
+    setExpandedWinnerXp(prev => ({
+      ...prev,
+      [matchId]: !prev[matchId]
+    }));
+  };
+
+  const renderWinnerXpBreakdown = (winnerPart: any, match: Match) => {
+    const season = seasons.find(s => s.id === match.seasonId);
+    const config = season || {
+      xpPerDefeatedOpponent: 50,
+      xpBonusSimple: 0,
+      xpBonusDouble: 50,
+      xpBonusTriple: 100,
+      xpVampireMultiplier: 1,
+      xpBonusTueurDeGeants: 50,
+      xpBonusPhenix: 30,
+      xpBonusSerialWinner: 40,
+      bonusVainqueurParRang: false,
+    };
+
+    const survivors = match.participants.filter(p => p.rank > 1);
+    const nAdversaries = survivors.length;
+    const totalScoreLeft = survivors.reduce((sum, p) => sum + (p.scoreLeft || 0), 0);
+
+    let xpFromLosers = 0;
+    if (config.bonusVainqueurParRang) {
+      const winnerSeasonXP = winnerPart.xpBefore;
+      const winnerTier = getLevelIndex(winnerSeasonXP);
+      xpFromLosers = survivors.reduce((sum, l) => {
+        const loserSeasonXP = l.xpBefore;
+        const loserTier = getLevelIndex(loserSeasonXP);
+        const tierDiff = winnerTier - loserTier;
+        let factor = 1.0;
+        if (tierDiff > 0) {
+          factor = Math.max(0, 1 - 0.25 * tierDiff);
+        } else if (tierDiff < 0) {
+          factor = 1 + 0.25 * Math.abs(tierDiff);
+        }
+        return sum + Math.floor(config.xpPerDefeatedOpponent * factor);
+      }, 0);
+    } else {
+      xpFromLosers = nAdversaries * (config.xpPerDefeatedOpponent || 50);
+    }
+
+    let finishBonus = config.xpBonusSimple || 0;
+    if (winnerPart.finishType === "TRIPLE") finishBonus = config.xpBonusTriple || 100;
+    else if (winnerPart.finishType === "DOUBLE") finishBonus = config.xpBonusDouble || 50;
+
+    const vampireXP = Math.round(totalScoreLeft * (config.xpVampireMultiplier || 1));
+
+    const breakdown: { label: string; xp: number; icon: string }[] = [];
+    
+    if (xpFromLosers > 0) {
+      breakdown.push({
+        label: `Victoire vs adversaires (${nAdversaries}x)`,
+        xp: xpFromLosers,
+        icon: "🎯"
+      });
+    }
+    
+    if (finishBonus > 0) {
+      breakdown.push({
+        label: `Fermeture ${winnerPart.finishType}`,
+        xp: finishBonus,
+        icon: "⚡"
+      });
+    }
+    
+    if (vampireXP > 0) {
+      breakdown.push({
+        label: `Effet Vampire (${totalScoreLeft} pts restants)`,
+        xp: vampireXP,
+        icon: "🧛"
+      });
+    }
+    
+    if (winnerPart.medals && winnerPart.medals.includes("TUEUR_DE_GEANTS")) {
+      breakdown.push({
+        label: "Tueur de Géants",
+        xp: config.xpBonusTueurDeGeants || 50,
+        icon: "⚔️"
+      });
+    }
+    
+    if (winnerPart.medals && winnerPart.medals.includes("PHENIX")) {
+      breakdown.push({
+        label: "Phénix",
+        xp: config.xpBonusPhenix || 30,
+        icon: "🔥"
+      });
+    }
+    
+    if (winnerPart.medals && winnerPart.medals.includes("SERIAL_WINNER")) {
+      breakdown.push({
+        label: "Serial Winner",
+        xp: config.xpBonusSerialWinner || 40,
+        icon: "🔥🔥"
+      });
+    }
+    
+    // Parse BOURSE_PX
+    const bourseMedal = winnerPart.medals ? winnerPart.medals.find((m: string) => m.startsWith("BOURSE_PX:")) : null;
+    if (bourseMedal) {
+      const bourseXP = Number(bourseMedal.split(":")[1]);
+      if (!isNaN(bourseXP)) {
+        breakdown.push({
+          label: "Bourse d'Équipe",
+          xp: bourseXP,
+          icon: "💰"
+        });
+      }
+    }
+
+    // Calculate sum and find if there is any leftover
+    const sumCalculated = breakdown.reduce((sum, item) => sum + item.xp, 0);
+    const diff = winnerPart.xpEarned - sumCalculated;
+    if (diff !== 0) {
+      breakdown.push({
+        label: "Ajustement / Autre",
+        xp: diff,
+        icon: "✨"
+      });
+    }
+
+    return (
+      <li className="mt-1 pb-2 border-b border-[#2A2A2E]/20">
+        <div className="ml-9 p-3 bg-slate-950/80 border border-[#2A2A2E]/30 rounded-none text-xs text-slate-400 space-y-2 animate-fadeIn font-sans">
+          <div className="text-[10px] uppercase font-extrabold text-amber-400/90 tracking-widest flex items-center gap-1.5 border-b border-[#2A2A2E]/40 pb-1.5 mb-1 select-none">
+            📊 Détail des XP gagnés par le Vainqueur ({winnerPart.xpEarned} XP)
+          </div>
+          <div className="space-y-1.5">
+            {breakdown.map((item, idx) => (
+              <div key={idx} className="flex justify-between items-center font-mono text-xs">
+                <span className="flex items-center gap-2 font-sans text-slate-300">
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
+                </span>
+                <span className="font-bold text-emerald-400">+{item.xp} XP</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </li>
+    );
+  };
 
   useEffect(() => {
     if (!isAdmin && viewMode === "logs") {
@@ -437,47 +585,60 @@ export default function MatchHistoryTab({
                         const isWinner = part.rank === 1;
 
                         return (
-                          <li key={part.playerId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-                            {/* Left segment */}
-                            <div className="flex items-center gap-3">
-                              <span className={`w-6 h-6 rounded-none select-none font-black flex items-center justify-center text-[10px] border ${
-                                isWinner
-                                  ? "bg-amber-500/15 border-amber-500/35 text-amber-400"
-                                  : "bg-slate-950 border-[#2A2A2E] text-slate-450"
-                              }`}>
-                                {isWinner ? "🏆" : part.rank}
-                              </span>
-                              <div>
-                                <span className="font-bold text-white text-sm select-text font-sans">{pName}</span>
-                                <span className="inline-block sm:hidden text-[10px] text-slate-500 ml-2">
-                                  {isWinner ? `Félicitations ! Fermeture ${part.finishType}` : `Reste ${part.scoreLeft} pts`}
+                          <Fragment key={part.playerId}>
+                            <li className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                              {/* Left segment */}
+                              <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-none select-none font-black flex items-center justify-center text-[10px] border ${
+                                  isWinner
+                                    ? "bg-amber-500/15 border-amber-500/35 text-amber-400"
+                                    : "bg-slate-950 border-[#2A2A2E] text-slate-450"
+                                }`}>
+                                  {isWinner ? "🏆" : part.rank}
+                                </span>
+                                <div>
+                                  <span className="font-bold text-white text-sm select-text font-sans">{pName}</span>
+                                  <span className="inline-block sm:hidden text-[10px] text-slate-500 ml-2">
+                                    {isWinner ? `Félicitations ! Fermeture ${part.finishType}` : `Reste ${part.scoreLeft} pts`}
+                                  </span>
+                                </div>
+                                <span className="hidden sm:inline-block text-[10px] text-slate-400 font-normal">
+                                  {isWinner ? `· Fermeture ${part.finishType}` : `· Reste ${part.scoreLeft} pt(s)`}
                                 </span>
                               </div>
-                              <span className="hidden sm:inline-block text-[10px] text-slate-400 font-normal">
-                                {isWinner ? `· Fermeture ${part.finishType}` : `· Reste ${part.scoreLeft} pt(s)`}
-                              </span>
-                            </div>
 
-                            {/* Right segment (XP and badges) */}
-                            <div className="flex items-center gap-2 flex-wrap self-end sm:self-center font-sans">
-                              <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 font-black font-mono text-xs rounded-none border border-emerald-505/20">
-                                +{part.xpEarned} XP
-                              </span>
-                              {part.medals && part.medals.length > 0 && (
-                                <div className="flex items-center gap-1">
-                                  {part.medals.map(medal => (
-                                    <span
-                                      key={medal}
-                                      className="p-1 px-1.5 bg-slate-950 border border-[#2A2A2E] hover:border-[#2A2A2E] text-xs rounded-none select-none flex items-center gap-1 shrink-0 filter brightness-110 cursor-help"
-                                      title={getMedalTitle(medal)}
-                                    >
-                                      <span className="text-xs leading-none">{getMedalIcon(medal)}</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </li>
+                              {/* Right segment (XP and badges) */}
+                              <div className="flex items-center gap-2 flex-wrap self-end sm:self-center font-sans">
+                                {isWinner && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleWinnerXp(m.id)}
+                                    className="p-1 px-2 text-[9px] font-bold uppercase tracking-wider text-slate-400 hover:text-white flex items-center gap-1 border border-[#2A2A2E] hover:border-slate-700 bg-slate-950 rounded-none cursor-pointer transition font-sans"
+                                    title="Détail des XP gagnés"
+                                  >
+                                    {expandedWinnerXp[m.id] ? "Masquer détails ▴" : "Détails XP ▾"}
+                                  </button>
+                                )}
+                                <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-400 font-black font-mono text-xs rounded-none border border-emerald-500/20">
+                                  +{part.xpEarned} XP
+                                </span>
+                                {part.medals && part.medals.length > 0 && (
+                                  <div className="flex items-center gap-1">
+                                    {part.medals.map(medal => (
+                                      <span
+                                        key={medal}
+                                        className="p-1 px-1.5 bg-slate-950 border border-[#2A2A2E] hover:border-[#2A2A2E] text-xs rounded-none select-none flex items-center gap-1 shrink-0 filter brightness-110 cursor-help"
+                                        title={getMedalTitle(medal)}
+                                      >
+                                        <span className="text-xs leading-none">{getMedalIcon(medal)}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </li>
+                            {isWinner && expandedWinnerXp[m.id] && renderWinnerXpBreakdown(part, m)}
+                          </Fragment>
                         );
                       })}
                     </ul>
