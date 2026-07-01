@@ -416,7 +416,7 @@ export default function MatchHistoryTab({
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-5 bg-[#111114] border border-[#2A2A2E] rounded-none gap-4 box-glow">
         <div>
-          <h2 className="text-xl font-bold font-display text-white tracking-wide uppercase">📜 Historique & Traces</h2>
+          <h2 className="text-xl font-bold font-display text-white tracking-wide uppercase">📜 Historique</h2>
           <p className="text-xs text-slate-400 mt-1">Revoir l'ensemble des parties terminées et suivre l'historique complet des modifications.</p>
         </div>
 

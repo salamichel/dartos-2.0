@@ -55,6 +55,12 @@ export default function GuildsTab({
   };
 
   const [guildsWithStats, setGuildsWithStats] = useState<GuildWithStats[]>([]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<number | "">(activeSeasonId);
+
+  // Sync state if activeSeasonId changes
+  useEffect(() => {
+    setSelectedSeasonId(activeSeasonId);
+  }, [activeSeasonId]);
 
   // Compute stats dynamically inside guilds
   useEffect(() => {
@@ -67,8 +73,8 @@ export default function GuildsTab({
     });
 
     matches.forEach(m => {
-      // Filter matches by current active season if activeSeasonId is provided
-      if (activeSeasonId !== "" && m.seasonId !== activeSeasonId) return;
+      // Filter matches by current selected season if selectedSeasonId is provided
+      if (selectedSeasonId !== "" && m.seasonId !== selectedSeasonId) return;
 
       (m.participants || []).forEach(part => {
         const stats = playerStatsMap.get(part.playerId) || { xp: 0, wins: 0, badgesCount: 0, uniqueBadges: [] };
@@ -177,7 +183,7 @@ export default function GuildsTab({
     // Rank Alliances based on Total collective XP
     formatted.sort((a,b) => b.collectiveXP - a.collectiveXP);
     setGuildsWithStats(formatted);
-  }, [players, matches, activeSeasonId]);
+  }, [players, matches, selectedSeasonId]);
 
   const [loading, setLoading] = useState(false);
 
@@ -324,10 +330,26 @@ export default function GuildsTab({
       {/* Alliance Rank Table & Cards */}
       {guildsWithStats.length > 0 && (
         <div className="bg-[#111114] border border-[#2A2A2E] rounded-none shadow-lg p-4 md:p-5 space-y-4">
-          <h3 className="text-sm font-bold font-display text-white tracking-wider flex items-center gap-1.5 uppercase select-none">
-            <Trophy className="w-4 h-4 text-amber-500" />
-            Classement des Alliances ({guildsWithStats.length})
-          </h3>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#2A2A2E]/40 pb-3">
+            <h3 className="text-sm font-bold font-display text-white tracking-wider flex items-center gap-1.5 uppercase select-none">
+              <Trophy className="w-4 h-4 text-amber-500" />
+              Classement des Alliances ({guildsWithStats.length})
+            </h3>
+
+            {/* Season select filter */}
+            <select
+              value={selectedSeasonId}
+              onChange={(e) => setSelectedSeasonId(e.target.value === "" ? "" : Number(e.target.value))}
+              className="bg-slate-950 border border-[#2A2A2E] text-slate-300 font-bold text-xs px-3 py-2 rounded-none focus:border-cosmic-accent/60 focus:outline-none cursor-pointer"
+            >
+              <option value="">🏆 Saisons Confondues (Général)</option>
+              {seasons.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.name} {new Date(s.startedAt) <= new Date() && (!s.endedAt || new Date(s.endedAt) >= new Date()) ? "🟢" : "🔒"}
+                </option>
+              ))}
+            </select>
+          </div>
           
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto text-xs">
