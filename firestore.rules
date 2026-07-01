@@ -98,6 +98,17 @@ service cloud.firestore {
         && data.adminPassword.size() <= 100;
     }
 
+    // Entity validator: MatchLog
+    function isValidMatchLog(data) {
+      return data.keys().hasAll(['id', 'matchId', 'action', 'timestamp', 'details'])
+        && data.id is string
+        && data.matchId is int
+        && data.action is string
+        && data.timestamp is string
+        && data.details is string
+        && (!data.keys().contains('author') || data.author is string);
+    }
+
     // --- Matches / Allow rules for collections ---
 
     match /players/{playerId} {
@@ -128,6 +139,12 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if isValidId(settingsId) && isValidAdminSettings(incoming());
       allow delete: if isValidId(settingsId);
+    }
+
+    match /matchLogs/{logId} {
+      allow read: if true;
+      allow create, update: if isValidId(logId) && isValidMatchLog(incoming());
+      allow delete: if isValidId(logId);
     }
   }
 }

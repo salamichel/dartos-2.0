@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Info, Lock, Unlock, ShieldAlert, Sparkles, Trophy, Award, Calendar, RefreshCw, X, History, Shield, Users, Swords } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { dbStore } from "./dbStore";
-import { Player, Season, Match, Guild } from "./types";
+import { Player, Season, Match, Guild, MatchLog } from "./types";
 import { getMedalIcon, getMedalTitle } from "./scoring";
 
 import SplashModal, { SPLASH_VERSION } from "./components/SplashModal";
@@ -24,6 +24,7 @@ export default function App() {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [guilds, setGuilds] = useState<Guild[]>([]);
+  const [matchLogs, setMatchLogs] = useState<MatchLog[]>([]);
 
   // Selected season for Leaderboard display
   const [lbSeasonId, setLbSeasonId] = useState<number | "">("");
@@ -94,6 +95,7 @@ export default function App() {
     setSeasons(allSeasons);
     setMatches([...dbStore.getMatches()]);
     setGuilds([...dbStore.getGuilds()]);
+    setMatchLogs([...dbStore.getMatchLogs()]);
   };
 
   // Toast loop helper
@@ -225,7 +227,7 @@ export default function App() {
     if (!ok) return;
 
     try {
-      dbStore.deleteMatch(id);
+      dbStore.deleteMatch(id, isUnlocked ? "Administrateur" : "Membre Autorisé");
       showToast(`Match #${id} supprimé avec succès !`, "ok");
       syncDatabase();
     } catch (err: any) {
@@ -380,8 +382,10 @@ export default function App() {
                 players={players}
                 seasons={seasons}
                 matches={matches}
+                matchLogs={matchLogs}
                 onDeleteMatch={handleDeleteMatch}
                 onEditMatch={handleEditMatch}
+                isAdmin={isUnlocked}
               />
             )}
 

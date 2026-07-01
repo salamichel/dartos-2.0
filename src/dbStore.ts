@@ -1,4 +1,4 @@
-import { Player, Season, Match, Guild, MatchParticipant } from "./types";
+import { Player, Season, Match, Guild, MatchParticipant, MatchLog } from "./types";
 import { getPlayersCareerXPs, getSeasonPlayerXPs, calculateGuildRank, calculateMatchResults } from "./scoring";
 
 // Firebase imports
@@ -95,6 +95,7 @@ interface DatabaseState {
   matches: Match[];
   guilds: Guild[];
   adminPassword?: string;
+  matchLogs?: MatchLog[];
 }
 
 // Initial seeding data
@@ -103,7 +104,8 @@ const INITIAL_STATE: DatabaseState = {
   players: [],
   seasons: [],
   matches: [],
-  guilds: []
+  guilds: [],
+  matchLogs: []
 };
 
 class DartosDB {
@@ -135,6 +137,7 @@ class DartosDB {
         this.state.guilds.forEach(g => {
           if (!g.memberIds) g.memberIds = [];
         });
+        if (!this.state.matchLogs) this.state.matchLogs = [];
         if (!this.state.adminPassword) this.state.adminPassword = "admin";
       } catch (e) {
         this.state = { ...INITIAL_STATE };
@@ -238,6 +241,21 @@ class DartosDB {
       console.warn("Firestore guilds onSnapshot error: ", error);
     });
 
+    // MatchLogs query snapshot
+    onSnapshot(collection(db, "matchLogs"), (snap) => {
+      const logs: MatchLog[] = [];
+      snap.forEach(d => {
+        const l = d.data() as MatchLog;
+        if (l) {
+          logs.push(l);
+        }
+      });
+      this.state.matchLogs = logs.sort((a,b) => b.timestamp.localeCompare(a.timestamp));
+      this.saveLocalAndNotify();
+    }, (error) => {
+      console.warn("Firestore matchLogs onSnapshot error: ", error);
+    });
+
     // AdminSettings document snapshot
     onSnapshot(doc(db, "adminSettings", "config"), (docSnap) => {
       if (docSnap.exists()) {
@@ -303,7 +321,8 @@ class DartosDB {
         seasons: this.state.seasons,
         matches: this.state.matches,
         guilds: this.state.guilds,
-        adminPassword: this.state.adminPassword
+        adminPassword: this.state.adminPassword,
+        matchLogs: this.state.matchLogs || []
       }
     };
     return JSON.stringify(backup, null, 2);
@@ -321,7 +340,7 @@ class DartosDB {
       throw new Error("Format de sauvegarde invalide ou version non supportée.");
     }
 
-    const { players, seasons, matches, guilds, adminPassword } = parsed.data;
+    const { players, seasons, matches, guilds, adminPassword, matchLogs } = parsed.data;
 
     if (!Array.isArray(players) || !Array.isArray(seasons) || !Array.isArray(matches) || !Array.isArray(guilds)) {
       throw new Error("Les données de sauvegarde sont incomplètes ou corrompues.");
@@ -332,6 +351,7 @@ class DartosDB {
     const newSeasons = seasons as Season[];
     const newMatches = matches as Match[];
     const newGuilds = guilds as Guild[];
+    const newMatchLogs = Array.isArray(matchLogs) ? (matchLogs as MatchLog[]) : [];
 
     // 1. Delete all existing docs in current memory state to clear Firestore
     const deleteBatch = writeBatch(db);
@@ -351,6 +371,12 @@ class DartosDB {
     // We clean guilds
     for (const g of this.state.guilds) {
       deleteBatch.delete(doc(db, "guilds", g.id.toString()));
+    }
+    // We clean matchLogs
+    if (this.state.matchLogs) {
+      for (const l of this.state.matchLogs) {
+        deleteBatch.delete(doc(db, "matchLogs", l.id));
+      }
     }
 
     try {
@@ -399,6 +425,13 @@ class DartosDB {
       await commitBatchIfNeeded();
     }
 
+    // Add matchLogs
+    for (const l of newMatchLogs) {
+      currentBatch.set(doc(db, "matchLogs", l.id), l);
+      countInBatch++;
+      await commitBatchIfNeeded();
+    }
+
     // Add admin password if supplied
     if (adminPassword) {
       currentBatch.set(doc(db, "adminSettings", "config"), { adminPassword: adminPassword.trim() || "admin" });
@@ -413,9 +446,37 @@ class DartosDB {
     this.state.seasons = newSeasons.sort((a,b) => a.id - b.id);
     this.state.matches = newMatches.sort((a,b) => a.id - b.id);
     this.state.guilds = newGuilds.sort((a,b) => a.id - b.id);
+    this.state.matchLogs = newMatchLogs.sort((a,b) => b.timestamp.localeCompare(a.timestamp));
     if (adminPassword) {
       this.state.adminPassword = adminPassword;
     }
+    this.saveLocalAndNotify();
+  }
+
+  // --- MatchLogs ---
+  getMatchLogs(): MatchLog[] {
+    return this.state.matchLogs || [];
+  }
+
+  async addMatchLog(matchId: number, action: MatchLog["action"], details: string, author?: string): Promise<void> {
+    const id = `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const log: MatchLog = {
+      id,
+      matchId,
+      action,
+      timestamp: new Date().toISOString(),
+      details,
+      author: author || "Système"
+    };
+
+    try {
+      await setDoc(doc(db, "matchLogs", id), cleanUndefined(log));
+    } catch (error) {
+      console.warn("Failed to save match log to Firestore: ", error);
+    }
+
+    if (!this.state.matchLogs) this.state.matchLogs = [];
+    this.state.matchLogs.unshift(log);
     this.saveLocalAndNotify();
   }
 
@@ -555,7 +616,15 @@ class DartosDB {
     return [...filtered].sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
   }
 
-  async recordMatch(match: Omit<Match, "id">): Promise<Match> {
+  private getMatchDetailsString(participants: MatchParticipant[]): string {
+    return (participants || []).map(p => {
+      const pName = this.state.players.find(pl => pl.id === p.playerId)?.name || `Joueur #${p.playerId}`;
+      const scoreDetail = p.scoreLeft !== null && p.scoreLeft !== undefined ? ` (score resté: ${p.scoreLeft})` : ' (Gagnant)';
+      return `${pName}${scoreDetail} [Rang ${p.rank}]: +${p.xpEarned} XP`;
+    }).join("; ");
+  }
+
+  async recordMatch(match: Omit<Match, "id">, author?: string): Promise<Match> {
     const maxId = this.state.matches.reduce((max, m) => m.id > max ? m.id : max, 0);
     const newMatch: Match = {
       ...match,
@@ -570,12 +639,17 @@ class DartosDB {
 
     this.state.matches.push(newMatch);
 
+    // Save locally and notify first so state contains player data for log formatting
     this.saveLocalAndNotify();
+
+    // Create match log
+    const details = `Match #${newMatch.id} créé. Participants: ${this.getMatchDetailsString(newMatch.participants)}`;
+    await this.addMatchLog(newMatch.id, "CREATE", details, author);
     
     return newMatch;
   }
 
-  async updateMatch(id: number, updatedData: Omit<Match, "id">): Promise<Match> {
+  async updateMatch(id: number, updatedData: Omit<Match, "id">, author?: string): Promise<Match> {
     const index = this.state.matches.findIndex(m => m.id === id);
     if (index === -1) throw new Error("Match introuvable");
     const updated: Match = {
@@ -597,10 +671,15 @@ class DartosDB {
     this.saveLocalAndNotify();
 
     const recalculatedMatch = this.state.matches.find(m => m.id === id) || updated;
+
+    // Create match log
+    const details = `Match #${id} mis à jour. Nouveaux participants: ${this.getMatchDetailsString(recalculatedMatch.participants)}`;
+    await this.addMatchLog(id, "UPDATE", details, author);
+
     return recalculatedMatch;
   }
 
-  async deleteMatch(id: number) {
+  async deleteMatch(id: number, author?: string) {
     const index = this.state.matches.findIndex(m => m.id === id);
     if (index === -1) throw new Error("Match introuvable");
 
@@ -619,10 +698,14 @@ class DartosDB {
     await this.recalculateSeasonMatches(seasonId);
 
     this.saveLocalAndNotify();
+
+    // Create match log
+    const details = `Match #${id} supprimé de la saison #${seasonId}. Participants d'origine: ${this.getMatchDetailsString(matchToDelete.participants)}`;
+    await this.addMatchLog(id, "DELETE", details, author);
   }
 
   // --- Tombola update ---
-  async updateLotteryGains(matchId: number, playerGains: { playerId: number; xpBonus: number; emojis: string[] }[]): Promise<Match> {
+  async updateLotteryGains(matchId: number, playerGains: { playerId: number; xpBonus: number; emojis: string[] }[], author?: string): Promise<Match> {
     const match = this.state.matches.find(m => m.id === matchId);
     if (!match) throw new Error("Match introuvable");
 
@@ -656,6 +739,15 @@ class DartosDB {
       this.state.matches[idx] = cloned;
     }
     this.saveLocalAndNotify();
+
+    // Create match log for lottery claim
+    const gainsSummary = playerGains.map(g => {
+      const pName = this.state.players.find(pl => pl.id === g.playerId)?.name || `Joueur #${g.playerId}`;
+      return `${pName}: +${g.xpBonus} XP (${g.emojis.join("")})`;
+    }).join("; ");
+    const details = `Gains de tombola appliqués au Match #${matchId}. Détails: ${gainsSummary}`;
+    await this.addMatchLog(matchId, "LOTTERY_CLAIM", details, author);
+
     return cloned;
   }
 

@@ -91,3 +91,13 @@ export interface GuildWithStats {
   collectiveWins: number;
   achievements: GuildAchievement[];
 }
+
+export interface MatchLog {
+  id: string;
+  matchId: number;
+  action: "CREATE" | "UPDATE" | "DELETE" | "LOTTERY_CLAIM";
+  timestamp: string;
+  details: string;
+  author?: string;
+}
+

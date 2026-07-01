@@ -231,7 +231,7 @@ export function calculateMatchResults(
   const winnerSeasonXPForPhenix = playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(winnerId) ?? 0) : winnerCareerXPBefore;
   const otherSeasonXPs = losers.map(l => playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(l.playerId) ?? 0) : (loserCareerXPsBefore.get(l.playerId) || 0));
   const totalParticipantsCount = 1 + losers.length;
-  if (totalParticipantsCount > 3 && otherSeasonXPs.length > 0 && winnerSeasonXPForPhenix < Math.min(...otherSeasonXPs)) {
+  if (totalParticipantsCount > 3 && otherSeasonXPs.length > 0 && winnerSeasonXPForPhenix > 0 && winnerSeasonXPForPhenix < Math.min(...otherSeasonXPs)) {
     winnerXP += config.xpBonusPhenix;
     winnerMedals.push("PHENIX");
   }
@@ -309,7 +309,7 @@ export function calculateMatchResults(
     const isDernierClassementXpDeLaPartie = playerXPBefore <= minMatchXP;
     const isTermineMoinsDe50 = loser.scoreLeft < 50;
 
-    if (totalParticipantsCount > 3 && isDernierDeLaPartie && isDernierClassementXpDeLaPartie && isTermineMoinsDe50) {
+    if (totalParticipantsCount > 3 && isDernierDeLaPartie && isDernierClassementXpDeLaPartie && isTermineMoinsDe50 && playerXPBefore > 0) {
       xp += config.xpBonusBenjamin;
       medals.push("BENJAMIN");
     }

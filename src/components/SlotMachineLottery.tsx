@@ -111,7 +111,7 @@ export default function SlotMachineLottery({ match, season, players, onGainsSave
 
     if (playerGains.length > 0) {
       try {
-        const updated = await dbStore.updateLotteryGains(match.id, playerGains);
+        const updated = await dbStore.updateLotteryGains(match.id, playerGains, "Tirage Tombola");
         setResultMessage(`🎰 Tirage Terminé · ${playerGains.length} gagnant(s) !`);
         setResultsList(matchMessages);
         onGainsSaved(updated);

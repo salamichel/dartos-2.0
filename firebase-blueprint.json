@@ -148,6 +148,20 @@
         }
       },
       "required": ["adminPassword"]
+    },
+    "MatchLog": {
+      "title": "MatchLog",
+      "description": "Log of a match creation, modification, or deletion",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "matchId": { "type": "integer" },
+        "action": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "details": { "type": "string" },
+        "author": { "type": "string" }
+      },
+      "required": ["id", "matchId", "action", "timestamp", "details"]
     }
   },
   "firestore": {
@@ -180,6 +194,12 @@
         "$ref": "#/entities/AdminSettings"
       },
       "description": "Administrative configurations"
+    },
+    "matchLogs": {
+      "schema": {
+        "$ref": "#/entities/MatchLog"
+      },
+      "description": "Log of match modifications, creations, and deletions"
     }
   }
 }

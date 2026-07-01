@@ -828,7 +828,7 @@ export default function TeamCombatTab({
         seasonId: activeSeason.id,
         playedAt: matchDateStr,
         participants: updatedParticipants
-      });
+      }, isAdmin ? "Administrateur" : "Visiteur");
 
       setAlertText({ text: "Bataille en Équipe enregistrée avec succès dans l'historique ! ✓", type: "ok" });
       onMatchRecorded(savedMatch);

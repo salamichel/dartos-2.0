@@ -259,7 +259,7 @@ export default function MatchEntryTab({
           seasonId: activeSeason.id,
           playedAt: matchDateStr,
           participants: calculatedParticipants
-        });
+        }, isAdmin ? "Administrateur" : "Membre Autorisé");
         setEditingMatch(null);
         setStatusText({ text: "Match mis à jour avec succès !", isError: false });
       } else {
@@ -267,7 +267,7 @@ export default function MatchEntryTab({
           seasonId: activeSeason.id,
           playedAt: matchDateStr,
           participants: calculatedParticipants
-        });
+        }, isAdmin ? "Administrateur" : "Visiteur");
         setStatusText({ text: "Match enregistré avec succès !", isError: false });
       }
 
