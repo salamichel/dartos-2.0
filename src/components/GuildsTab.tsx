@@ -12,6 +12,9 @@ interface GuildsTabProps {
   onShowToast: (msg: string, type: "ok" | "err" | "info") => void;
   onShowConfirm: (msg: string) => Promise<boolean>;
   activeSeasonId: number | "";
+  unlockedGuildIds: number[];
+  setUnlockedGuildIds: React.Dispatch<React.SetStateAction<number[]>>;
+  isAdmin: boolean;
 }
 
 export default function GuildsTab({
@@ -21,14 +24,35 @@ export default function GuildsTab({
   onGuildsUpdated,
   onShowToast,
   onShowConfirm,
-  activeSeasonId
+  activeSeasonId,
+  unlockedGuildIds = [],
+  setUnlockedGuildIds,
+  isAdmin = false
 }: GuildsTabProps) {
   // Guild Form States
   const [editingGuildId, setEditingGuildId] = useState<number | null>(null);
   const [guildName, setGuildName] = useState("");
   const [badgeIcon, setBadgeIcon] = useState("🛡️");
   const [badgeColor, setBadgeColor] = useState("#3dc7ff");
+  const [password, setPassword] = useState("");
+  const [creatorId, setCreatorId] = useState<number | "">("");
   const [statusMsg, setStatusMsg] = useState("");
+
+  const challengeGuildAccess = async (g: Guild): Promise<boolean> => {
+    if (isAdmin) return true;
+    if (!g.password) return true; // not protected
+    if (unlockedGuildIds.includes(g.id)) return true; // already unlocked
+
+    const psw = prompt(`Cette alliance "${g.name}" est protégée par un mot de passe. Veuillez le saisir pour continuer :`);
+    if (psw === null) return false;
+    if (psw.trim() === g.password) {
+      setUnlockedGuildIds(prev => [...prev, g.id]);
+      onShowToast("Guilde déverrouillée ! ✓", "ok");
+      return true;
+    }
+    onShowToast("Mot de passe incorrect !", "err");
+    return false;
+  };
 
   const [guildsWithStats, setGuildsWithStats] = useState<GuildWithStats[]>([]);
 
@@ -172,16 +196,21 @@ export default function GuildsTab({
         await dbStore.updateGuild(editingGuildId, {
           name: cleanName,
           badgeIcon: cleanIcon,
-          badgeColor: cleanColor
+          badgeColor: cleanColor,
+          password: password,
+          creatorId: creatorId !== "" ? Number(creatorId) : undefined
         });
         onShowToast("Guilde modifiée avec succès ! ✓", "ok");
         setEditingGuildId(null);
       } else {
-        await dbStore.createGuild({
+        const newGuild = await dbStore.createGuild({
           name: cleanName,
           badgeIcon: cleanIcon,
-          badgeColor: cleanColor
+          badgeColor: cleanColor,
+          password: password,
+          creatorId: creatorId !== "" ? Number(creatorId) : undefined
         });
+        setUnlockedGuildIds(prev => [...prev, newGuild.id]);
         onShowToast("Guilde créée avec succès ! ✓", "ok");
       }
       resetForm();
@@ -195,8 +224,12 @@ export default function GuildsTab({
 
   const handleRecruitMember = async (guildId: number, playerIdStr: string) => {
     if (!playerIdStr || loading) return;
-    const playerId = Number(playerIdStr);
+    const originalGuild = dbStore.getGuilds().find(x => x.id === guildId);
+    if (!originalGuild) return;
+    const okAccess = await challengeGuildAccess(originalGuild);
+    if (!okAccess) return;
 
+    const playerId = Number(playerIdStr);
     setLoading(true);
     try {
       await dbStore.joinGuild(guildId, playerId);
@@ -211,6 +244,11 @@ export default function GuildsTab({
 
   const handleExcludeMember = async (guildId: number, playerId: number, playerName: string) => {
     if (loading) return;
+    const originalGuild = dbStore.getGuilds().find(x => x.id === guildId);
+    if (!originalGuild) return;
+    const okAccess = await challengeGuildAccess(originalGuild);
+    if (!okAccess) return;
+
     const ok = await onShowConfirm(`Voulez-vous vraiment exclure "${playerName}" de l'alliance ?`);
     if (!ok) return;
 
@@ -226,17 +264,29 @@ export default function GuildsTab({
     }
   };
 
-  const handleEditGuild = (g: Guild) => {
+  const handleEditGuild = async (g: Guild) => {
+    const originalGuild = dbStore.getGuilds().find(x => x.id === g.id);
+    if (!originalGuild) return;
+    const ok = await challengeGuildAccess(originalGuild);
+    if (!ok) return;
+
     setEditingGuildId(g.id);
     setGuildName(g.name);
     setBadgeIcon(g.badgeIcon);
     setBadgeColor(g.badgeColor);
+    setPassword(originalGuild.password || "");
+    setCreatorId(originalGuild.creatorId || "");
     setStatusMsg("");
     document.getElementById("guild-form-container")?.scrollIntoView({ behavior: "smooth" });
   };
 
   const handleDeleteGuild = async (id: number, name: string) => {
     if (loading) return;
+    const originalGuild = dbStore.getGuilds().find(x => x.id === id);
+    if (!originalGuild) return;
+    const okAccess = await challengeGuildAccess(originalGuild);
+    if (!okAccess) return;
+
     const ok = await onShowConfirm(`Voulez-vous vraiment dissoudre l'alliance "${name}" ? Cette action est définitive.`);
     if (!ok) return;
 
@@ -257,6 +307,8 @@ export default function GuildsTab({
     setGuildName("");
     setBadgeIcon("🛡️");
     setBadgeColor("#3dc7ff");
+    setPassword("");
+    setCreatorId("");
     setStatusMsg("");
   };
 
@@ -399,6 +451,37 @@ export default function GuildsTab({
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Créateur / Fondateur de la Guilde</label>
+              <div className="relative flex items-center w-full min-h-[44px]">
+                <select
+                  value={creatorId}
+                  onChange={(e) => setCreatorId(e.target.value === "" ? "" : Number(e.target.value))}
+                  className="bg-slate-950 border border-[#2A2A2E] text-slate-300 font-bold text-xs px-3 py-3 rounded-none focus:outline-none w-full cursor-pointer pr-10 font-sans min-h-[44px]"
+                >
+                  <option value="">👤 Sélectionner le créateur...</option>
+                  {players.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-500 absolute right-3 pointer-events-none" />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Mot de passe de la Guilde</label>
+              <input
+                type="text"
+                maxLength={32}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Optionnel - Sécurise les matchs et l'alliance"
+                className="bg-slate-950 border border-[#2A2A2E] text-xs text-slate-300 px-3 py-3 rounded-none focus:border-cosmic-accent/60 focus:outline-none placeholder:text-slate-700 min-h-[44px]"
+              />
+            </div>
+          </div>
+
           <div className="flex gap-4 flex-col sm:flex-row justify-between items-stretch sm:items-center pt-2">
             <div className="flex items-center justify-between sm:justify-start gap-2 text-xs text-slate-400 font-medium bg-[#16161A]/45 p-2 sm:p-0 border border-[#2A2A2E]/30 sm:border-transparent">
               <span>Prévisualisation :</span>
@@ -475,7 +558,10 @@ export default function GuildsTab({
 
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => handleEditGuild(gl)}
+                      onClick={() => {
+                        const originalGuild = dbStore.getGuilds().find(x => x.id === gl.id);
+                        if (originalGuild) handleEditGuild(originalGuild);
+                      }}
                       className="p-2 sm:p-1 sm:px-2.5 text-[10px] md:text-[9px] uppercase font-bold text-slate-455 hover:text-white border border-[#2A2A2E]/60 hover:border-[#2A2A2E] bg-slate-900 rounded-none cursor-pointer transition flex items-center gap-1 min-h-[36px] sm:min-h-0"
                       title="Modifier la guilde"
                     >
@@ -492,6 +578,53 @@ export default function GuildsTab({
                     </button>
                   </div>
                 </div>
+
+                {/* Password and Creator Security Box */}
+                {(() => {
+                  const originalGuild = dbStore.getGuilds().find(x => x.id === gl.id);
+                  const creatorPlayer = players.find(p => p.id === originalGuild?.creatorId);
+                  const hasPass = !!originalGuild?.password;
+                  const isUnlockedSelf = unlockedGuildIds.includes(gl.id) || isAdmin;
+
+                  return (
+                    <div className="px-4 py-2 bg-slate-950/80 border-b border-[#2A2A2E]/40 text-[11px] font-sans flex flex-col gap-1 select-none">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400">
+                          👑 Fondateur : <strong className="text-slate-200 font-bold">{creatorPlayer ? creatorPlayer.name : "Aucun"}</strong>
+                        </span>
+                        {hasPass && (
+                          <span className={`text-[9px] px-1.5 py-0.2 rounded-none font-extrabold border ${
+                            isUnlockedSelf
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : "bg-red-500/10 text-red-400 border-red-500/20"
+                          }`}>
+                            {isUnlockedSelf ? "DÉVERROUILLÉ" : "SÉCURISÉ"}
+                          </span>
+                        )}
+                      </div>
+                      {hasPass && (
+                        <div className="pt-1">
+                          {isUnlockedSelf ? (
+                            <div className="text-xs bg-slate-900 border border-slate-800 p-1.5 px-2.5 flex items-center justify-between text-slate-300 font-mono">
+                              <span>🔑 Code : <strong className="text-white select-text font-mono">{originalGuild.password}</strong></span>
+                              <span className="text-[9px] text-slate-500">Visible par le créateur</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                if (originalGuild) await challengeGuildAccess(originalGuild);
+                              }}
+                              className="text-xs bg-slate-900 hover:bg-slate-850 border border-slate-800 p-1.5 px-2.5 flex items-center justify-between text-slate-400 hover:text-white cursor-pointer transition w-full text-left"
+                            >
+                              <span>🔒 Alliance Protégée (Saisir le mot de passe)</span>
+                              <span className="text-[10px] font-bold text-cosmic-accent underline">Débloquer</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Body details container */}
                 <div className="p-4 sm:p-5 flex-1 flex flex-col gap-4 sm:gap-5">

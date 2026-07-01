@@ -47,6 +47,7 @@ export default function App() {
   // Admin authentication state
   const [adminPassword, setAdminPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [unlockedGuildIds, setUnlockedGuildIds] = useState<number[]>([]);
 
   // Sync state initially and subscribe to updates
   useEffect(() => {
@@ -159,6 +160,41 @@ export default function App() {
     return false;
   };
 
+  const verifyMatchAuthorization = async (m: Match): Promise<boolean> => {
+    if (isUnlocked) return true;
+
+    // Get guilds involved
+    const guildsList = dbStore.getGuilds();
+    const guildsInvolved = guildsList.filter(g => 
+      g.password && g.memberIds && g.memberIds.some(memId => m.participants.some(p => p.playerId === memId))
+    );
+
+    if (guildsInvolved.length > 0) {
+      const alreadyUnlocked = guildsInvolved.every(g => unlockedGuildIds.includes(g.id));
+      if (alreadyUnlocked) return true;
+
+      const guildNames = guildsInvolved.map(g => g.name).join(", ");
+      const psw = prompt(`Ce match implique des membres de la guilde protégée (${guildNames}). Saisissez le mot de passe de la guilde (ou le code admin) pour valider :`);
+      if (psw === null) return false;
+      const clean = psw.trim();
+
+      if (clean === dbStore.getAdminPassword()) {
+        return true;
+      }
+
+      const matchingGuild = guildsInvolved.find(g => g.password === clean);
+      if (matchingGuild) {
+        setUnlockedGuildIds(prev => [...prev, matchingGuild.id]);
+        return true;
+      }
+
+      showToast("Mot de passe incorrect !", "err");
+      return false;
+    }
+
+    return verifyAdmin();
+  };
+
   const handleMatchRecorded = (newMatch: Match) => {
     // Open Celebration Modal
     setRecordedMatch(newMatch);
@@ -171,7 +207,7 @@ export default function App() {
   };
 
   const handleEditMatch = async (m: Match) => {
-    const authorised = await verifyAdmin();
+    const authorised = await verifyMatchAuthorization(m);
     if (!authorised) return;
 
     setEditingMatch(m);
@@ -180,7 +216,9 @@ export default function App() {
   };
 
   const handleDeleteMatch = async (id: number) => {
-    const authorised = await verifyAdmin();
+    const m = matches.find(x => x.id === id);
+    if (!m) return;
+    const authorised = await verifyMatchAuthorization(m);
     if (!authorised) return;
 
     const ok = await showConfirm(`Supprimer le match #${id} ? Cette action recalculera les XPs des matchs suivants.`);
@@ -331,6 +369,9 @@ export default function App() {
                 onMatchRecorded={handleMatchRecorded}
                 editingMatch={editingMatch}
                 setEditingMatch={setEditingMatch}
+                unlockedGuildIds={unlockedGuildIds}
+                setUnlockedGuildIds={setUnlockedGuildIds}
+                isAdmin={isUnlocked}
               />
             )}
 
@@ -365,6 +406,9 @@ export default function App() {
                 onShowToast={showToast}
                 onShowConfirm={showConfirm}
                 activeSeasonId={lbSeasonId}
+                unlockedGuildIds={unlockedGuildIds}
+                setUnlockedGuildIds={setUnlockedGuildIds}
+                isAdmin={isUnlocked}
               />
             )}
 

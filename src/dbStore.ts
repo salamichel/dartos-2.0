@@ -664,7 +664,7 @@ class DartosDB {
     return this.state.guilds;
   }
 
-  async createGuild(payload: { name: string; badgeIcon: string; badgeColor: string }): Promise<Guild> {
+  async createGuild(payload: { name: string; badgeIcon: string; badgeColor: string; password?: string; creatorId?: number }): Promise<Guild> {
     const exists = this.state.guilds.some(g => g.name.trim().toLowerCase() === payload.name.trim().toLowerCase());
     if (exists) {
       throw new Error("Une guilde avec ce nom existe déjà");
@@ -676,7 +676,9 @@ class DartosDB {
       badgeIcon: payload.badgeIcon.trim(),
       badgeColor: payload.badgeColor.trim(),
       createdAt: new Date().toISOString(),
-      memberIds: []
+      memberIds: [],
+      password: payload.password?.trim() || "",
+      creatorId: payload.creatorId ? Number(payload.creatorId) : undefined
     };
 
     try {
@@ -690,7 +692,7 @@ class DartosDB {
     return guild;
   }
 
-  async updateGuild(id: number, payload: { name?: string; badgeIcon?: string; badgeColor?: string }): Promise<Guild> {
+  async updateGuild(id: number, payload: { name?: string; badgeIcon?: string; badgeColor?: string; password?: string; creatorId?: number }): Promise<Guild> {
     const guild = this.state.guilds.find(g => g.id === id);
     if (!guild) throw new Error("Guilde introuvable");
 
@@ -705,6 +707,8 @@ class DartosDB {
     }
     if (payload.badgeIcon) cloned.badgeIcon = payload.badgeIcon.trim();
     if (payload.badgeColor) cloned.badgeColor = payload.badgeColor.trim();
+    if (payload.password !== undefined) cloned.password = payload.password.trim();
+    if (payload.creatorId !== undefined) cloned.creatorId = payload.creatorId ? Number(payload.creatorId) : undefined;
 
     try {
       await setDoc(doc(db, "guilds", id.toString()), cleanUndefined(cloned));

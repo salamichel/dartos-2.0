@@ -10,6 +10,9 @@ interface TeamCombatTabProps {
   seasons: Season[];
   matches: Match[];
   onMatchRecorded: (newMatch: Match) => void;
+  unlockedGuildIds?: number[];
+  setUnlockedGuildIds?: React.Dispatch<React.SetStateAction<number[]>>;
+  isAdmin?: boolean;
 }
 
 interface Quest {
@@ -159,7 +162,10 @@ export default function TeamCombatTab({
   players = [],
   seasons = [],
   matches = [],
-  onMatchRecorded
+  onMatchRecorded,
+  unlockedGuildIds = [],
+  setUnlockedGuildIds,
+  isAdmin = false
 }: TeamCombatTabProps) {
   // Game Setup State
   const [step, setStep] = useState<"setup" | "distribution" | "active" | "finished">("setup");

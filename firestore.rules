@@ -77,7 +77,6 @@ service cloud.firestore {
     // Entity validator: Guild
     function isValidGuild(data) {
       return data.keys().hasAll(['id', 'name', 'badgeIcon', 'badgeColor', 'createdAt', 'memberIds'])
-        && data.keys().size() == 6
         && data.id is int
         && data.name is string
         && data.name.size() <= 100
@@ -86,7 +85,9 @@ service cloud.firestore {
         && data.createdAt is string
         && data.memberIds is list
         && data.memberIds.size() <= 100
-        && (data.memberIds.size() == 0 || data.memberIds[0] is int);
+        && (data.memberIds.size() == 0 || data.memberIds[0] is int)
+        && (!data.keys().contains('password') || data.password == null || data.password is string)
+        && (!data.keys().contains('creatorId') || data.creatorId == null || data.creatorId is int);
     }
 
     // Entity validator: AdminSettings

@@ -13,6 +13,9 @@ interface MatchEntryTabProps {
   onMatchRecorded: (newMatch: Match) => void;
   editingMatch: Match | null;
   setEditingMatch: (m: Match | null) => void;
+  unlockedGuildIds: number[];
+  setUnlockedGuildIds: React.Dispatch<React.SetStateAction<number[]>>;
+  isAdmin: boolean;
 }
 
 export default function MatchEntryTab({
@@ -21,7 +24,10 @@ export default function MatchEntryTab({
   matches = [],
   onMatchRecorded,
   editingMatch,
-  setEditingMatch
+  setEditingMatch,
+  unlockedGuildIds = [],
+  setUnlockedGuildIds,
+  isAdmin = false
 }: MatchEntryTabProps) {
   const [gameMode, setGameMode] = useState<"classic" | "team_combat">("classic");
   const [playedAt, setPlayedAt] = useState("");
@@ -147,6 +153,50 @@ export default function MatchEntryTab({
       setStatusText({ text: "Aucune saison active trouvée correspondante à cette date. Créez une saison d'abord.", isError: true });
       setLoading(false);
       return;
+    }
+
+    const verifyRecordingAuthorization = async (participantPlayerIds: number[]): Promise<boolean> => {
+      if (isAdmin) return true;
+
+      // Get guilds involved
+      const guildsList = dbStore.getGuilds();
+      const guildsInvolved = guildsList.filter(g =>
+        g.password && g.memberIds && g.memberIds.some(memId => participantPlayerIds.includes(memId))
+      );
+
+      if (guildsInvolved.length > 0) {
+        const alreadyUnlocked = guildsInvolved.some(g => unlockedGuildIds.includes(g.id));
+        if (alreadyUnlocked) return true;
+
+        const guildNames = guildsInvolved.map(g => g.name).join(", ");
+        const psw = prompt(`Ce match implique des membres de la guilde protégée (${guildNames}). Saisissez le mot de passe de la guilde (ou le code admin) pour valider l'enregistrement :`);
+        if (psw === null) return false;
+        const clean = psw.trim();
+
+        if (clean === dbStore.getAdminPassword()) {
+          return true;
+        }
+
+        const matchingGuild = guildsInvolved.find(g => g.password === clean);
+        if (matchingGuild) {
+          setUnlockedGuildIds(prev => [...prev, matchingGuild.id]);
+          return true;
+        }
+
+        return false;
+      }
+
+      return true;
+    };
+
+    // Verify before editing an existing match (new match score entry is always free and open)
+    if (editingMatch !== null) {
+      const authorized = await verifyRecordingAuthorization(selectedIds);
+      if (!authorized) {
+        setStatusText({ text: "Action non autorisée. Mot de passe de la guilde incorrect ou requis pour la modification.", isError: true });
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -277,6 +327,9 @@ export default function MatchEntryTab({
           seasons={seasons}
           matches={matches}
           onMatchRecorded={onMatchRecorded}
+          unlockedGuildIds={unlockedGuildIds}
+          setUnlockedGuildIds={setUnlockedGuildIds}
+          isAdmin={isAdmin}
         />
       ) : (
         <>

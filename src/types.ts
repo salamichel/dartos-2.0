@@ -56,6 +56,8 @@ export interface Guild {
   badgeColor: string;
   createdAt: string;
   memberIds: number[]; // lists player ids
+  password?: string;
+  creatorId?: number;
 }
 
 export interface GuildMemberWithStats {

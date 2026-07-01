@@ -126,6 +126,14 @@
         },
         "memberIds": {
           "type": "array"
+        },
+        "password": {
+          "type": "string",
+          "description": "Optional password for authorizing match modifications and views"
+        },
+        "creatorId": {
+          "type": "integer",
+          "description": "Optional player ID who created this guild"
         }
       },
       "required": ["id", "name", "badgeIcon", "badgeColor", "createdAt", "memberIds"]
