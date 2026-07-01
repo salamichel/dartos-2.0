@@ -652,6 +652,10 @@ class DartosDB {
   async updateMatch(id: number, updatedData: Omit<Match, "id">, author?: string): Promise<Match> {
     const index = this.state.matches.findIndex(m => m.id === id);
     if (index === -1) throw new Error("Match introuvable");
+    
+    // Deep copy of old state
+    const oldMatch = JSON.parse(JSON.stringify(this.state.matches[index])) as Match;
+
     const updated: Match = {
       ...updatedData,
       id
@@ -672,8 +676,42 @@ class DartosDB {
 
     const recalculatedMatch = this.state.matches.find(m => m.id === id) || updated;
 
-    // Create match log
-    const details = `Match #${id} mis à jour. Nouveaux participants: ${this.getMatchDetailsString(recalculatedMatch.participants)}`;
+    // Detailed difference tracking payload
+    const diffData = {
+      type: "update_diff",
+      playedAt: {
+        before: oldMatch.playedAt,
+        after: recalculatedMatch.playedAt
+      },
+      participants: {
+        before: oldMatch.participants.map(p => {
+          const name = this.state.players.find(pl => pl.id === p.playerId)?.name || `Joueur #${p.playerId}`;
+          return {
+            playerId: p.playerId,
+            name,
+            rank: p.rank,
+            scoreLeft: p.scoreLeft,
+            xpEarned: p.xpEarned,
+            finishType: p.finishType,
+            medals: p.medals || []
+          };
+        }),
+        after: recalculatedMatch.participants.map(p => {
+          const name = this.state.players.find(pl => pl.id === p.playerId)?.name || `Joueur #${p.playerId}`;
+          return {
+            playerId: p.playerId,
+            name,
+            rank: p.rank,
+            scoreLeft: p.scoreLeft,
+            xpEarned: p.xpEarned,
+            finishType: p.finishType,
+            medals: p.medals || []
+          };
+        })
+      }
+    };
+
+    const details = JSON.stringify(diffData);
     await this.addMatchLog(id, "UPDATE", details, author);
 
     return recalculatedMatch;

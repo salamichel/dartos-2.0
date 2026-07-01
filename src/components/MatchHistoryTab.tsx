@@ -50,6 +50,106 @@ export default function MatchHistoryTab({
     });
   };
 
+  const renderLogDetails = (detailsStr: string) => {
+    try {
+      const data = JSON.parse(detailsStr);
+      if (data && data.type === "update_diff") {
+        const diff = data;
+        
+        return (
+          <div className="mt-3 space-y-4">
+            {/* If date changed */}
+            {diff.playedAt && diff.playedAt.before !== diff.playedAt.after && (
+              <div className="flex items-center gap-2 bg-slate-950/40 p-2.5 border border-[#2A2A2E]/50 text-[11px] font-mono rounded-none">
+                <span className="text-slate-500 uppercase font-bold text-[9px]">Date du match :</span>
+                <span className="text-red-400 line-through">{formatDate(diff.playedAt.before)}</span>
+                <span className="text-slate-400">➔</span>
+                <span className="text-emerald-400 font-bold">{formatDate(diff.playedAt.after)}</span>
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* BEFORE PANEL */}
+              <div className="border border-red-500/10 bg-red-500/[0.01] p-3 rounded-none">
+                <div className="flex items-center justify-between border-b border-red-500/20 pb-1.5 mb-2.5">
+                  <span className="text-[10px] font-black uppercase text-red-400 tracking-wider">État Précédent (Avant)</span>
+                  <span className="text-[10px] text-red-500/50 font-mono">n={diff.participants.before.length}</span>
+                </div>
+                <ul className="space-y-2 font-mono text-[11px]">
+                  {diff.participants.before.map((p: any) => (
+                    <li key={p.playerId} className="flex justify-between items-center bg-red-500/[0.02] px-2 py-1.5 border border-red-500/5 rounded-none">
+                      <span className="text-slate-350 truncate pr-2">
+                        <strong className="text-slate-200 font-sans font-semibold mr-1.5">{p.name}</strong> 
+                        {p.rank === 1 ? (
+                          <span className="text-amber-500 font-bold text-[10px]">🏆 Gg ({p.finishType || 'SIMPLE'})</span>
+                        ) : (
+                          <span className="text-slate-500 text-[10px]">(Reste {p.scoreLeft})</span>
+                        )}
+                      </span>
+                      <span className="text-red-400/80 font-bold text-xs shrink-0">
+                        Rang {p.rank} · +{p.xpEarned} XP
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* AFTER PANEL */}
+              <div className="border border-emerald-500/15 bg-emerald-500/[0.01] p-3 rounded-none">
+                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-1.5 mb-2.5">
+                  <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Nouvel État (Après)</span>
+                  <span className="text-[10px] text-emerald-500/50 font-mono">n={diff.participants.after.length}</span>
+                </div>
+                <ul className="space-y-2 font-mono text-[11px]">
+                  {diff.participants.after.map((p: any) => {
+                    const beforePlayer = diff.participants.before.find((b: any) => b.playerId === p.playerId);
+                    const isChanged = !beforePlayer || 
+                      beforePlayer.rank !== p.rank || 
+                      beforePlayer.scoreLeft !== p.scoreLeft || 
+                      beforePlayer.xpEarned !== p.xpEarned || 
+                      beforePlayer.finishType !== p.finishType;
+
+                    return (
+                      <li 
+                        key={p.playerId} 
+                        className={`flex justify-between items-center px-2 py-1.5 border rounded-none ${
+                          isChanged 
+                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200" 
+                            : "bg-slate-950/40 border-[#2A2A2E]/50 text-slate-400"
+                        }`}
+                      >
+                        <span className="truncate pr-2">
+                          <strong className={`font-sans font-semibold mr-1.5 ${isChanged ? "text-emerald-300" : "text-slate-300"}`}>{p.name}</strong> 
+                          {p.rank === 1 ? (
+                            <span className="text-amber-500 font-bold text-[10px]">🏆 Gg ({p.finishType || 'SIMPLE'})</span>
+                          ) : (
+                            <span className="text-slate-500 text-[10px]">(Reste {p.scoreLeft})</span>
+                          )}
+                        </span>
+                        <span className={`font-bold shrink-0 text-xs ${isChanged ? "text-emerald-400" : "text-slate-400"}`}>
+                          Rang {p.rank} · +{p.xpEarned} XP
+                          {isChanged && <span className="ml-1 text-[9px] text-emerald-400 font-black animate-pulse">▲</span>}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          </div>
+        );
+      }
+    } catch (e) {
+      // Ignore
+    }
+
+    return (
+      <p className="text-xs text-slate-300 font-sans leading-relaxed select-text">
+        {detailsStr}
+      </p>
+    );
+  };
+
   // Sort logs in chronological descending order (newest first)
   const sortedLogs = [...matchLogs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -152,9 +252,7 @@ export default function MatchHistoryTab({
                           Auteur : <strong className="text-slate-200 bg-slate-950 px-1.5 py-0.5 rounded-sm border border-slate-900">{log.author}</strong>
                         </span>
                       </div>
-                      <p className="text-xs text-slate-300 font-sans leading-relaxed select-text">
-                        {log.details}
-                      </p>
+                      {renderLogDetails(log.details)}
                     </div>
 
                     <div className="shrink-0 self-start md:self-center">
