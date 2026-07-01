@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { UserPlus, Edit3, Award, Star, Eye } from "lucide-react";
 import { Player, Match, Guild, Season } from "../types";
-import { getLevel, getMedalIcon, getMedalTitle } from "../scoring";
+import { getLevel, getMedalIcon, getMedalTitle, LEVEL_COLORS } from "../scoring";
 import { dbStore } from "../dbStore";
 import PlayerDetailModal from "./PlayerDetailModal";
 
@@ -88,23 +88,36 @@ export default function PlayersTab({
         totalXP += part.xpEarned;
         if (activeSeason && m.seasonId === activeSeason.id) {
           seasonXP += part.xpEarned;
+          (part.medals || []).forEach(medal => {
+            badgesGroup[medal] = (badgesGroup[medal] || 0) + 1;
+          });
         }
-        (part.medals || []).forEach(medal => {
-          badgesGroup[medal] = (badgesGroup[medal] || 0) + 1;
-        });
       }
     });
 
     totalXP = Math.max(0, totalXP);
     seasonXP = Math.max(0, seasonXP);
-    const levelInfo = getLevel(totalXP);
+    const levelInfo = getLevel(seasonXP);
+
+    const standardMedals: { name: string; count: number }[] = [];
+    const tombolaEmojis: { emoji: string; count: number }[] = [];
+
+    Object.entries(badgesGroup).forEach(([name, count]) => {
+      if (name.startsWith("LOTTERY_WINNER:")) {
+        const emoji = name.split(":")[1] || "🍀";
+        tombolaEmojis.push({ emoji, count });
+      } else {
+        standardMedals.push({ name, count });
+      }
+    });
 
     return {
       ...p,
       totalXP,
       seasonXP,
       levelTitle: levelInfo.title,
-      medals: Object.entries(badgesGroup).map(([name, count]) => ({ name, count }))
+      standardMedals,
+      tombolaEmojis
     };
   });
 
@@ -177,7 +190,7 @@ export default function PlayersTab({
                           {p.name}
                           <Eye className="w-3.5 h-3.5 text-slate-500 opacity-0 group-hover/row:opacity-100 transition-opacity" />
                         </strong>
-                        <span className="px-2.5 py-0.5 border border-cosmic-accent/20 bg-cosmic-accent/10 text-cosmic-accent text-[10px] rounded-none font-bold">
+                        <span className={`px-2.5 py-0.5 border text-[10px] rounded-none font-bold ${LEVEL_COLORS[p.levelTitle] || "bg-slate-850"}`}>
                           {p.levelTitle}
                         </span>
                       </div>
@@ -191,19 +204,39 @@ export default function PlayersTab({
                         </span>
                         
                         {/* Grouped Medals Display */}
-                        {p.medals.length > 0 && (
+                        {(p.standardMedals.length > 0 || p.tombolaEmojis.length > 0) && (
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[#66666E] text-[10px] uppercase font-mono tracking-wider">Médailles :</span>
-                            {p.medals.map(m => (
+                            
+                            {/* Standard medals */}
+                            {p.standardMedals.map(m => (
                               <span
                                 key={m.name}
                                 className="px-1.5 py-0.5 bg-slate-950 border border-[#2A2A2E] text-[10px] rounded-none font-mono select-none flex items-center gap-1 shrink-0 cursor-help"
                                 title={getMedalTitle(m.name)}
                               >
                                 {getMedalIcon(m.name)}
-                                {m.count > 1 && <span className="text-slate-405 font-bold font-mono text-[9px]">×{m.count}</span>}
+                                {m.count > 1 && <span className="text-slate-400 font-bold font-mono text-[9px]">×{m.count}</span>}
                               </span>
                             ))}
+
+                            {/* Grouped tombola emojis */}
+                            {p.tombolaEmojis.length > 0 && (
+                              <span
+                                className="px-1.5 py-0.5 bg-slate-950 border border-emerald-500/20 text-[10px] rounded-none font-mono select-none flex items-center gap-1.5 shrink-0 cursor-help"
+                                title={`Gains de Tombola ! (${p.tombolaEmojis.map(te => `${te.emoji} x${te.count}`).join(", ")})`}
+                              >
+                                <span className="text-emerald-400">🍀</span>
+                                <span className="flex items-center gap-1">
+                                  {p.tombolaEmojis.map((te, idx) => (
+                                    <span key={idx} className="flex items-center">
+                                      {te.emoji}
+                                      {te.count > 1 && <span className="text-slate-400 font-bold font-mono text-[9px] ml-0.5">×{te.count}</span>}
+                                    </span>
+                                  ))}
+                                </span>
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>

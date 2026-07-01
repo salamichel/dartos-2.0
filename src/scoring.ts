@@ -8,6 +8,14 @@ export const LEVELS = [
   { title: "Phil Taylor", minXP: 10000 },
 ];
 
+export const LEVEL_COLORS: Record<string, string> = {
+  "Pousse-Caillou": "bg-slate-800/60 text-slate-300 border-slate-700/40",
+  "Lanceur du Dimanche": "bg-emerald-500/10 text-emerald-300 border-emerald-500/20",
+  "Sniper de Comptoir": "bg-cosmic-accent/10 text-cosmic-accent border-cosmic-accent/20",
+  "Maître du 301": "bg-purple-500/10 text-purple-300 border-purple-500/20",
+  "Phil Taylor": "bg-amber-500/15 text-amber-400 border-amber-500/30 animate-pulse"
+};
+
 export function getLevel(xp: number) {
   for (let i = LEVELS.length - 1; i >= 0; i--) {
     if (xp >= LEVELS[i].minXP) {
@@ -84,9 +92,9 @@ export function getMedalTitle(m: string): string {
     case "JACKPOT": return "Jackpot (Score miroir)";
     case "EGALITE": return "Égalité Fraternelle";
     case "TUEUR_DE_GEANTS": return "Tueur de Géants (Bat un plus haut niveau)";
-    case "PHENIX": return "Phénix (Outsider qui gagne)";
+    case "PHENIX": return "Phénix (Outsider qui gagne - min. 4 joueurs)";
     case "SERIAL_WINNER": return "Serial Winner (3ème victoire d'affilée)";
-    case "BENJAMIN": return "Benjamin (Dernier de la partie s'il est dernier au classement XP ou < 50 pts)";
+    case "BENJAMIN": return "Benjamin (Dernier de la partie s'il est dernier au classement XP ou < 50 pts - min. 4 joueurs)";
     default: return m;
   }
 }
@@ -219,9 +227,11 @@ export function calculateMatchResults(
   }
 
   // 2. Phénix: Winner had strictly LESS starting XP than all other players (based on season XP if available)
+  // S'applique uniquement sur les parties qui comptent plus de 3 personnes (min. 4 joueurs)
   const winnerSeasonXPForPhenix = playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(winnerId) ?? 0) : winnerCareerXPBefore;
   const otherSeasonXPs = losers.map(l => playerSeasonXPsBefore ? (playerSeasonXPsBefore.get(l.playerId) ?? 0) : (loserCareerXPsBefore.get(l.playerId) || 0));
-  if (otherSeasonXPs.length > 0 && winnerSeasonXPForPhenix < Math.min(...otherSeasonXPs)) {
+  const totalParticipantsCount = 1 + losers.length;
+  if (totalParticipantsCount > 3 && otherSeasonXPs.length > 0 && winnerSeasonXPForPhenix < Math.min(...otherSeasonXPs)) {
     winnerXP += config.xpBonusPhenix;
     winnerMedals.push("PHENIX");
   }
@@ -286,10 +296,12 @@ export function calculateMatchResults(
     }
 
     // Benjamin:
+    // - si la partie compte plus de 3 personnes (min. 4 joueurs)
     // - si dernier de la partie
     // - si joueur est le plus faible en terme d'XP parmis les participants de la partie
     // - si termine avec moins de 50pts
     const totalLosersInMatch = sortedLosers.length;
+    const totalParticipantsCount = 1 + totalLosersInMatch;
     const isDernierDeLaPartie = rank === totalLosersInMatch + 1;
     const playerXPBefore = playerSeasonXPsBefore
       ? (playerSeasonXPsBefore.get(loser.playerId) ?? 0)
@@ -297,7 +309,7 @@ export function calculateMatchResults(
     const isDernierClassementXpDeLaPartie = playerXPBefore <= minMatchXP;
     const isTermineMoinsDe50 = loser.scoreLeft < 50;
 
-    if (isDernierDeLaPartie && isDernierClassementXpDeLaPartie && isTermineMoinsDe50) {
+    if (totalParticipantsCount > 3 && isDernierDeLaPartie && isDernierClassementXpDeLaPartie && isTermineMoinsDe50) {
       xp += config.xpBonusBenjamin;
       medals.push("BENJAMIN");
     }

@@ -3,7 +3,7 @@ import { X, Award, Swords, Zap, Sparkles, Flame, Percent, Target, Skull, Trendin
 import { motion } from "motion/react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Player, Match, Guild, Season } from "../types";
-import { getLevel, getMedalIcon, getMedalTitle, LEVELS } from "../scoring";
+import { getLevel, getMedalIcon, getMedalTitle, LEVELS, LEVEL_COLORS } from "../scoring";
 
 interface PlayerDetailModalProps {
   player: Player | null;
@@ -293,7 +293,7 @@ export default function PlayerDetailModal({
             </div>
 
             <div className="flex gap-2.5 items-center flex-wrap">
-              <span id="player-detail-tier-badge" className="inline-block px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider border text-cosmic-accent bg-cosmic-accent/10 border-cosmic-accent/20 rounded-none">
+              <span id="player-detail-tier-badge" className={`inline-block px-2.5 py-1 text-[10px] uppercase font-bold tracking-wider border rounded-none ${LEVEL_COLORS[levelInfo.title] || "bg-slate-850"}`}>
                 {levelInfo.title}
               </span>
               <span id="player-detail-season-xp-indicator" className="text-sm text-emerald-400 font-mono font-black bg-slate-950 px-2.5 py-1 border border-[#2A2A2E] shadow-[0_0_10px_rgba(16,185,129,0.1)]">
@@ -685,32 +685,79 @@ export default function PlayerDetailModal({
               <Sparkles className="w-4 h-4 text-cosmic-accent" /> Médailles & Badges Collectionnés
             </h3>
 
-            {Object.keys(medalsCountMap).length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
-                {Object.entries(medalsCountMap).map(([mName, count]) => (
-                  <div key={mName} className="flex items-center gap-2.5 bg-slate-950 p-2.5 border border-slate-850 hover:border-slate-800 transition">
-                    <span className="text-2xl filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] select-none shrink-0">
-                      {getMedalIcon(mName)}
-                    </span>
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-semibold text-white leading-tight">
-                          {getMedalTitle(mName)}
+            {(() => {
+              const standardMedalsList: { name: string; count: number }[] = [];
+              const tombolaEmojisList: { emoji: string; count: number }[] = [];
+
+              Object.entries(medalsCountMap).forEach(([mName, count]) => {
+                if (mName.startsWith("LOTTERY_WINNER:")) {
+                  const emoji = mName.split(":")[1] || "🍀";
+                  tombolaEmojisList.push({ emoji, count });
+                } else {
+                  standardMedalsList.push({ name: mName, count });
+                }
+              });
+
+              const hasMedals = standardMedalsList.length > 0 || tombolaEmojisList.length > 0;
+
+              if (hasMedals) {
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
+                    {/* Standard Medals */}
+                    {standardMedalsList.map(({ name, count }) => (
+                      <div key={name} className="flex items-center gap-2.5 bg-slate-950 p-2.5 border border-slate-850 hover:border-slate-800 transition">
+                        <span className="text-2xl filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] select-none shrink-0">
+                          {getMedalIcon(name)}
                         </span>
-                        <span className="px-1.5 py-0.2 bg-cosmic-accent/10 border border-cosmic-accent/20 text-cosmic-accent font-bold font-mono text-[9px] rounded-sm shrink-0">
-                          x{count}
-                        </span>
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-white leading-tight">
+                              {getMedalTitle(name)}
+                            </span>
+                            <span className="px-1.5 py-0.2 bg-cosmic-accent/10 border border-cosmic-accent/20 text-cosmic-accent font-bold font-mono text-[9px] rounded-sm shrink-0">
+                              x{count}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 block leading-tight">
+                            Aggregé sur l'ensemble des saisons de ligue.
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[10px] text-slate-400 block leading-tight">
-                        Aggregé sur l'ensemble des saisons de ligue.
-                      </span>
-                    </div>
+                    ))}
+
+                    {/* Grouped Tombola Medals */}
+                    {tombolaEmojisList.length > 0 && (
+                      <div className="flex items-center gap-2.5 bg-slate-950 p-2.5 border border-emerald-500/20 hover:border-emerald-500/30 transition col-span-1 sm:col-span-2">
+                        <span className="text-2xl filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)] select-none shrink-0">
+                          🍀
+                        </span>
+                        <div className="space-y-1.5 w-full">
+                          <span className="font-semibold text-white leading-tight block">
+                            Gains de Tombola
+                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {tombolaEmojisList.map(({ emoji, count }) => (
+                              <span
+                                key={emoji}
+                                className="px-2 py-1 bg-slate-900 border border-slate-800 text-slate-300 font-mono text-[11px] rounded-none flex items-center gap-1.5"
+                                title={`Gagné ${count} fois`}
+                              >
+                                <span>{emoji}</span>
+                                <span className="text-emerald-400 font-bold">x{count}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-450 italic py-2 text-center text-slate-400">Aucun badge ou médaille enregistré pour l'instant. Lancez des fléchettes ! 🎯</p>
-            )}
+                );
+              }
+
+              return (
+                <p className="text-xs text-slate-450 italic py-2 text-center text-slate-400">Aucun badge ou médaille enregistré pour l'instant. Lancez des fléchettes ! 🎯</p>
+              );
+            })()}
           </div>
 
           {/* Recent Form Lineup */}

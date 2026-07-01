@@ -73,7 +73,7 @@ export default function LeaderboardTab({
       name: "PHÉNIX",
       emoji: "🔥",
       xp: config.xpBonusPhenix,
-      description: "Attribué au vainqueur s'il a démarré la partie avec un XP de saison strictement inférieur à celui de TOUS les autres joueurs.",
+      description: "Attribué au vainqueur s'il a démarré la partie avec un XP de saison strictement inférieur à celui de TOUS les autres joueurs (uniquement pour les parties à plus de 3 joueurs).",
       category: "Vainqueur"
     },
     {
@@ -113,7 +113,7 @@ export default function LeaderboardTab({
       name: "BENJAMIN",
       emoji: "👶",
       xp: config.xpBonusBenjamin,
-      description: "Dernier de la partie, s'il a démarré avec l'XP le plus faible parmi les participants du match et s'il termine avec moins de 50 points restants.",
+      description: "Dernier de la partie, s'il a démarré avec l'XP le plus faible parmi les participants du match, termine avec moins de 50 points restants, et s'il s'agit d'une partie à plus de 3 joueurs.",
       category: "Survivant"
     },
     {
