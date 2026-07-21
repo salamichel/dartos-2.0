@@ -124,7 +124,7 @@ export default function MatchEntryTab({
     survivors.forEach(id => {
       const sVal = scoresLeft[id];
       const sNum = Number(sVal);
-      if (!sVal || isNaN(sNum) || sNum <= 0 || sNum > 301) {
+      if (sVal === undefined || sVal === null || sVal === "" || isNaN(sNum) || sNum < 0 || sNum > 301) {
         hasScoreErrors = true;
       } else {
         losersPayload.push({
@@ -135,7 +135,7 @@ export default function MatchEntryTab({
     });
 
     if (hasScoreErrors) {
-      setStatusText({ text: "Chaque survivant doit avoir un score restant valide entre 1 et 301 points", isError: true });
+      setStatusText({ text: "Chaque survivant doit avoir un score restant valide entre 0 et 301 points", isError: true });
       return;
     }
 
