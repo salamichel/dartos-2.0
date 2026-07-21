@@ -65,13 +65,14 @@ service cloud.firestore {
     // Entity validator: Match
     function isValidMatch(data) {
       return data.keys().hasAll(['id', 'seasonId', 'playedAt', 'participants'])
-        && data.keys().size() == 4
+        && (data.keys().size() == 4 || (data.keys().size() == 5 && data.keys().contains('excluded')))
         && data.id is int
         && data.seasonId is int
         && data.playedAt is string
         && data.participants is list
         && data.participants.size() <= 20
-        && (data.participants.size() == 0 || data.participants[0] is map);
+        && (data.participants.size() == 0 || data.participants[0] is map)
+        && (!data.keys().contains('excluded') || data.excluded is bool);
     }
 
     // Entity validator: Guild
