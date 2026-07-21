@@ -134,7 +134,7 @@ export default function SeasonsTab({
 
   // Calculation of season statistics
   const stats = selectedSeasonForStats ? (() => {
-    const seasonMatches = matches.filter(m => m.seasonId === selectedSeasonForStats.id);
+    const seasonMatches = matches.filter(m => m.seasonId === selectedSeasonForStats.id && !m.excluded);
     const totalMatches = seasonMatches.length;
 
     // Unique players

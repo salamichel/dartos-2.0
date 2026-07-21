@@ -541,7 +541,9 @@ export default function MatchHistoryTab({
               return (
                 <div
                   key={m.id}
-                  className="bg-[#111114] border border-[#2A2A2E] rounded-none overflow-hidden shadow-md flex flex-col divide-y divide-[#2A2A2E]/50 relative hover:border-cosmic-accent/30 transition-all duration-350"
+                  className={`bg-[#111114] border rounded-none overflow-hidden shadow-md flex flex-col divide-y divide-[#2A2A2E]/50 relative hover:border-cosmic-accent/30 transition-all duration-350 ${
+                    m.excluded ? "border-red-500/30 opacity-80" : "border-[#2A2A2E]"
+                  }`}
                 >
                   {/* Header segment with Match info */}
                   <div className="p-4 bg-slate-950 flex justify-between items-center flex-wrap gap-2 text-xs">
@@ -556,6 +558,14 @@ export default function MatchHistoryTab({
                         <Calendar className="w-3.5 h-3.5 opacity-60 text-cosmic-accent" />
                         {formatDate(m.playedAt)}
                       </span>
+                      {m.excluded && (
+                        <>
+                          <span className="text-slate-600">•</span>
+                          <span className="px-2 py-0.5 bg-red-500/20 border border-red-500/40 text-red-455 font-black rounded-none text-[10px] animate-pulse">
+                            ⚠️ EXCLU DU CLASSEMENT
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5 ml-auto">

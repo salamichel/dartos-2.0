@@ -36,6 +36,7 @@ export default function PlayerDetailModal({
       // Find seasons where player played at least once
       const playedIds = new Set<number>();
       matches.forEach(m => {
+        if (m.excluded) return;
         if ((m.participants || []).some(p => p.playerId === player.id) && m.seasonId) {
           playedIds.add(m.seasonId);
         }
@@ -52,7 +53,7 @@ export default function PlayerDetailModal({
 
   // 1. Filter matching stats
   const playerMatches = matches
-    .filter(m => (m.participants || []).some(p => p.playerId === player.id))
+    .filter(m => !m.excluded && (m.participants || []).some(p => p.playerId === player.id))
     .sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()); // newest first
 
   const totalMatchesCount = playerMatches.length;

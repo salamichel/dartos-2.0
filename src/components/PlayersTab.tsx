@@ -83,6 +83,7 @@ export default function PlayersTab({
     const badgesGroup: Record<string, number> = {};
 
     matches.forEach(m => {
+      if (m.excluded) return;
       const part = (m.participants || []).find(pt => pt.playerId === p.id);
       if (part) {
         totalXP += part.xpEarned;

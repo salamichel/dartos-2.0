@@ -104,7 +104,7 @@ export function getMedalTitle(m: string): string {
  */
 export function getSeasonPlayerXPs(seasonId: number, matches: Match[]): Map<number, number> {
   const map = new Map<number, number>();
-  const seasonMatches = matches.filter(m => m.seasonId === seasonId);
+  const seasonMatches = matches.filter(m => m.seasonId === seasonId && !m.excluded);
   // Sort matches chronologically to aggregate correctly
   const sorted = [...seasonMatches].sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
   
@@ -122,7 +122,7 @@ export function getSeasonPlayerXPs(seasonId: number, matches: Match[]): Map<numb
  */
 export function getPlayersCareerXPs(matches: Match[]): Map<number, number> {
   const map = new Map<number, number>();
-  const sorted = [...matches].sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
+  const sorted = [...matches].filter(m => !m.excluded).sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
   for (const m of sorted) {
     for (const p of m.participants || []) {
       const current = map.get(p.playerId) || 0;
@@ -142,7 +142,7 @@ export function countConsecutiveWinsBefore(
   beforeDateStr: string,
   excludeMatchId?: number
 ): number {
-  const seasonMatches = matches.filter(m => m.seasonId === seasonId && m.id !== excludeMatchId);
+  const seasonMatches = matches.filter(m => m.seasonId === seasonId && m.id !== excludeMatchId && !m.excluded);
   const beforeTime = new Date(beforeDateStr).getTime();
   
   // Get all previous matches for this player in this season, sorted newest to oldest
@@ -376,7 +376,7 @@ export function calculatePlayerSeasonXPBeforeMatch(
   const targetTime = new Date(playedAt).getTime();
   let xp = 0;
 
-  const seasonMatches = matches.filter(m => m.seasonId === seasonId && m.id !== excludeMatchId);
+  const seasonMatches = matches.filter(m => m.seasonId === seasonId && m.id !== excludeMatchId && !m.excluded);
   for (const m of seasonMatches) {
     const mTime = new Date(m.playedAt).getTime();
     let isBefore = false;
@@ -409,7 +409,7 @@ export function calculatePlayerCareerXPBeforeMatch(
   let xp = 0;
 
   for (const m of matches) {
-    if (m.id === excludeMatchId) continue;
+    if (m.id === excludeMatchId || m.excluded) continue;
     const mTime = new Date(m.playedAt).getTime();
     let isBefore = false;
     if (mTime < targetTime) {

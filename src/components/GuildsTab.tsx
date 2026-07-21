@@ -73,6 +73,7 @@ export default function GuildsTab({
     });
 
     matches.forEach(m => {
+      if (m.excluded) return;
       // Filter matches by current selected season if selectedSeasonId is provided
       if (selectedSeasonId !== "" && m.seasonId !== selectedSeasonId) return;
 

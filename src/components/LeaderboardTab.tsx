@@ -179,7 +179,7 @@ export default function LeaderboardTab({
     if (selectedSeasonId !== "") {
       // Seasonspecific leaderboard
       const map = new Map<number, { xp: number; wins: number; matchesCount: number }>();
-      const seasonMatches = matches.filter(m => m.seasonId === selectedSeasonId);
+      const seasonMatches = matches.filter(m => m.seasonId === selectedSeasonId && !m.excluded);
 
       seasonMatches.forEach(m => {
         (m.participants || []).forEach(p => {
@@ -210,7 +210,8 @@ export default function LeaderboardTab({
     } else {
       // Global leaderboard (All XP career)
       const map = new Map<number, { xp: number; wins: number; matchesCount: number }>();
-      matches.forEach(m => {
+      const nonExcludedMatches = matches.filter(m => !m.excluded);
+      nonExcludedMatches.forEach(m => {
         (m.participants || []).forEach(p => {
           const prev = map.get(p.playerId) || { xp: 0, wins: 0, matchesCount: 0 };
           map.set(p.playerId, {
@@ -281,8 +282,8 @@ export default function LeaderboardTab({
 
   // Chronological accumulation of XP for Recharts graph representation
   const activeSeasonMatchesForChart = selectedSeasonId !== ""
-    ? matches.filter(m => m.seasonId === selectedSeasonId)
-    : matches;
+    ? matches.filter(m => m.seasonId === selectedSeasonId && !m.excluded)
+    : matches.filter(m => !m.excluded);
 
   const sortedMatchesForChart = [...activeSeasonMatchesForChart].sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime());
 

@@ -939,6 +939,7 @@ class DartosDB {
     const priorMatches = allMatches.filter(m => new Date(m.playedAt).getTime() < firstSeasonMatchTime);
 
     for (const pm of priorMatches) {
+      if (pm.excluded) continue;
       for (const part of pm.participants || []) {
         const cur = simulatedCareerXPs.get(part.playerId) || 0;
         simulatedCareerXPs.set(part.playerId, cur + part.xpEarned);
@@ -953,6 +954,21 @@ class DartosDB {
     const matchesToUpdate: Match[] = [];
 
     for (const m of seasonMatches) {
+      if (m.excluded) {
+        const originalParticipants = m.participants || [];
+        const updatedParticipants = originalParticipants.map(p => ({
+          ...p,
+          xpEarned: 0,
+          medals: []
+        }));
+        const hasChanged = !areParticipantsEqual(originalParticipants, updatedParticipants);
+        m.participants = updatedParticipants;
+        if (hasChanged) {
+          matchesToUpdate.push(m);
+        }
+        continue;
+      }
+
       const winnerPart = (m.participants || []).find(p => p.rank === 1);
       const loserParts = (m.participants || []).filter(p => p.rank > 1);
 
@@ -976,6 +992,7 @@ class DartosDB {
       let consecutiveWins = 0;
       for (let i = currentIndexInSeason - 1; i >= 0; i--) {
         const prevMatch = seasonMatches[i];
+        if (prevMatch.excluded) continue;
         const participants = prevMatch.participants || [];
         const participated = participants.some(p => p.playerId === winnerId);
         if (participated) {

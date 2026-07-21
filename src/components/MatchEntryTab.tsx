@@ -36,6 +36,7 @@ export default function MatchEntryTab({
   const [scoresLeft, setScoresLeft] = useState<Record<number, string>>({});
   const [statusText, setStatusText] = useState<{ text: string; isError: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isExcluded, setIsExcluded] = useState(false);
 
   // In case of editing, pre-fill form
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function MatchEntryTab({
       const sortedParts = [...(editingMatch.participants || [])].sort((a, b) => a.rank - b.rank);
       const sIds = sortedParts.map(p => p.playerId);
       setSelectedIds(sIds);
+      setIsExcluded(editingMatch.excluded || false);
 
       const winner = sortedParts.find(p => p.rank === 1);
       if (winner && winner.finishType) {
@@ -63,6 +65,7 @@ export default function MatchEntryTab({
       setSelectedIds([]);
       setScoresLeft({});
       setWinnerFinish("SIMPLE");
+      setIsExcluded(false);
     }
   }, [editingMatch]);
 
@@ -258,7 +261,8 @@ export default function MatchEntryTab({
         savedMatch = await dbStore.updateMatch(editingMatch.id, {
           seasonId: activeSeason.id,
           playedAt: matchDateStr,
-          participants: calculatedParticipants
+          participants: calculatedParticipants,
+          excluded: isExcluded
         }, isAdmin ? "Administrateur" : "Membre Autorisé");
         setEditingMatch(null);
         setStatusText({ text: "Match mis à jour avec succès !", isError: false });
@@ -266,7 +270,8 @@ export default function MatchEntryTab({
         savedMatch = await dbStore.recordMatch({
           seasonId: activeSeason.id,
           playedAt: matchDateStr,
-          participants: calculatedParticipants
+          participants: calculatedParticipants,
+          excluded: isExcluded
         }, isAdmin ? "Administrateur" : "Visiteur");
         setStatusText({ text: "Match enregistré avec succès !", isError: false });
       }
@@ -353,6 +358,20 @@ export default function MatchEntryTab({
             onChange={(e) => setPlayedAt(e.target.value)}
             className="bg-slate-950 border border-[#2A2A2E] text-xs text-slate-300 px-3 py-2 rounded-none focus:border-cosmic-accent/60 focus:outline-none w-full md:w-56"
           />
+          {isAdmin && (
+            <div className="flex items-center gap-2 md:ml-4 bg-slate-950/40 p-2 border border-[#2A2A2E] rounded-none">
+              <input
+                id="exclude-match-checkbox"
+                type="checkbox"
+                checked={isExcluded}
+                onChange={(e) => setIsExcluded(e.target.checked)}
+                className="w-4 h-4 text-cosmic-accent bg-slate-950 border-[#2A2A2E] focus:ring-cosmic-accent/30 rounded cursor-pointer accent-cosmic-accent"
+              />
+              <label htmlFor="exclude-match-checkbox" className="text-xs font-bold text-red-400 uppercase cursor-pointer select-none">
+                ⚠️ Exclure du classement
+              </label>
+            </div>
+          )}
           {editingMatch && (
             <button
               type="button"

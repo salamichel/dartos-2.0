@@ -47,6 +47,7 @@ export interface Match {
   seasonId: number;
   playedAt: string;
   participants: MatchParticipant[];
+  excluded?: boolean;
 }
 
 export interface Guild {
