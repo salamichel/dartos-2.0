@@ -639,6 +639,9 @@ class DartosDB {
 
     this.state.matches.push(newMatch);
 
+    // Auto-recalculate season to propagate consecutive wins, exclusions, and updated xpBefore correctly
+    await this.recalculateSeasonMatches(newMatch.seasonId);
+
     // Save locally and notify first so state contains player data for log formatting
     this.saveLocalAndNotify();
 
@@ -656,8 +659,48 @@ class DartosDB {
     // Deep copy of old state
     const oldMatch = JSON.parse(JSON.stringify(this.state.matches[index])) as Match;
 
+    // Merge old medals and lottery/bourse bonuses into updatedData
+    const mergedParticipants = (updatedData.participants || []).map(p => {
+      const oldP = oldMatch.participants?.find(op => op.playerId === p.playerId);
+      if (!oldP) return p;
+
+      const finalMedals = [...(p.medals || [])];
+      
+      // Merge lottery winner medals
+      const lotteryMedals = (oldP.medals || []).filter(m => m.startsWith("LOTTERY_WINNER:"));
+      lotteryMedals.forEach(lm => {
+        if (!finalMedals.includes(lm)) {
+          finalMedals.push(lm);
+        }
+      });
+
+      // Merge BOURSE_PX medals
+      const bourseMedal = (oldP.medals || []).find(m => m.startsWith("BOURSE_PX:"));
+      let addedBourseXP = 0;
+      if (bourseMedal) {
+        if (!finalMedals.includes(bourseMedal)) {
+          finalMedals.push(bourseMedal);
+        }
+        const parsed = Number(bourseMedal.split(":")[1]);
+        if (!isNaN(parsed)) {
+          addedBourseXP = parsed;
+        }
+      }
+
+      // Merge lottery XP bonus
+      const lotteryBonus = oldP.xpBonusLotteryEarned || 0;
+
+      return {
+        ...p,
+        xpBonusLotteryEarned: lotteryBonus > 0 ? lotteryBonus : undefined,
+        xpEarned: p.xpEarned + addedBourseXP + lotteryBonus,
+        medals: finalMedals
+      };
+    });
+
     const updated: Match = {
       ...updatedData,
+      participants: mergedParticipants,
       id
     };
 

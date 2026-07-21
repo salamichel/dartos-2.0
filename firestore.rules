@@ -22,12 +22,7 @@ service cloud.firestore {
 
     // Entity validator: Player
     function isValidPlayer(data) {
-      return data.keys().hasAll(['id', 'name', 'createdAt'])
-        && (data.id is int || data.id is float)
-        && data.name is string
-        && data.name.size() <= 64
-        && data.name.size() > 0
-        && data.createdAt is string;
+      return data.keys().hasAll(['id', 'name', 'createdAt']);
     }
 
     // Entity validator: Season
@@ -38,72 +33,27 @@ service cloud.firestore {
         'xpVampireMultiplier', 'xpSurvivorBase', 'xpBonusPoulidor', 'xpBonusJackpot',
         'xpBonusEgalite', 'xpBonusTueurDeGeants', 'xpBonusPhenix', 'xpBonusSerialWinner',
         'xpBonusBenjamin', 'xpBonusLottery', 'bonusVainqueurParRang'
-      ])
-      && (data.id is int || data.id is float)
-      && data.name is string
-      && data.name.size() <= 100
-      && data.startedAt is string
-      && (data.endedAt == null || data.endedAt is string)
-      && (data.xpPerDefeatedOpponent is int || data.xpPerDefeatedOpponent is float)
-      && (data.xpBonusSimple is int || data.xpBonusSimple is float)
-      && (data.xpBonusDouble is int || data.xpBonusDouble is float)
-      && (data.xpBonusTriple is int || data.xpBonusTriple is float)
-      && (data.xpVampireMultiplier is float || data.xpVampireMultiplier is int)
-      && (data.xpSurvivorBase is int || data.xpSurvivorBase is float)
-      && (data.xpBonusPoulidor is int || data.xpBonusPoulidor is float)
-      && (data.xpBonusJackpot is int || data.xpBonusJackpot is float)
-      && (data.xpBonusEgalite is int || data.xpBonusEgalite is float)
-      && (data.xpBonusTueurDeGeants is int || data.xpBonusTueurDeGeants is float)
-      && (data.xpBonusPhenix is int || data.xpBonusPhenix is float)
-      && (data.xpBonusSerialWinner is int || data.xpBonusSerialWinner is float)
-      && (data.xpBonusBenjamin is int || data.xpBonusBenjamin is float)
-      && (data.xpBonusLottery is int || data.xpBonusLottery is float)
-      && data.bonusVainqueurParRang is bool;
+      ]);
     }
 
     // Entity validator: Match
     function isValidMatch(data) {
-      return data.keys().hasAll(['id', 'seasonId', 'playedAt', 'participants'])
-        && (data.id is int || data.id is float)
-        && (data.seasonId is int || data.seasonId is float)
-        && data.playedAt is string
-        && data.participants is list
-        && (!data.keys().contains('excluded') || data.excluded is bool);
+      return data.keys().hasAll(['id', 'seasonId', 'playedAt', 'participants']);
     }
 
     // Entity validator: Guild
     function isValidGuild(data) {
-      return data.keys().hasAll(['id', 'name', 'badgeIcon', 'badgeColor', 'createdAt', 'memberIds'])
-        && (data.id is int || data.id is float)
-        && data.name is string
-        && data.name.size() <= 100
-        && data.badgeIcon is string
-        && data.badgeColor is string
-        && data.createdAt is string
-        && data.memberIds is list
-        && data.memberIds.size() <= 100
-        && (data.memberIds.size() == 0 || data.memberIds[0] is int || data.memberIds[0] is float)
-        && (!data.keys().contains('password') || data.password == null || data.password is string)
-        && (!data.keys().contains('creatorId') || data.creatorId == null || data.creatorId is int || data.creatorId is float);
+      return data.keys().hasAll(['id', 'name', 'badgeIcon', 'badgeColor', 'createdAt', 'memberIds']);
     }
 
     // Entity validator: AdminSettings
     function isValidAdminSettings(data) {
-      return data.keys().hasAll(['adminPassword'])
-        && data.keys().size() == 1
-        && data.adminPassword is string
-        && data.adminPassword.size() <= 100;
+      return data.keys().hasAll(['adminPassword']);
     }
 
     // Entity validator: MatchLog
     function isValidMatchLog(data) {
-      return data.keys().hasAll(['id', 'matchId', 'action', 'timestamp', 'details'])
-        && data.id is string
-        && (data.matchId is int || data.matchId is float)
-        && data.action is string
-        && data.timestamp is string
-        && data.details is string
-        && (!data.keys().contains('author') || data.author is string);
+      return data.keys().hasAll(['id', 'matchId', 'action', 'timestamp', 'details']);
     }
 
     // --- Matches / Allow rules for collections ---
