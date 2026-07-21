@@ -958,6 +958,7 @@ class DartosDB {
         const originalParticipants = m.participants || [];
         const updatedParticipants = originalParticipants.map(p => ({
           ...p,
+          xpBefore: simulatedCareerXPs.get(p.playerId) || 0,
           xpEarned: 0,
           medals: []
         }));
@@ -1026,6 +1027,11 @@ class DartosDB {
 
         const lotteryBonus = p.xpBonusLotteryEarned || 0;
 
+        // Parse any existing BOURSE_PX medal & bonus XP
+        const bourseMedal = (p.medals || []).find(med => med.startsWith("BOURSE_PX:"));
+        const bourseBonus = bourseMedal ? Number(bourseMedal.split(":")[1]) : 0;
+        const finalBourseBonus = isNaN(bourseBonus) ? 0 : bourseBonus;
+
         const finalMedals = [...(recalc.medals || [])];
         const existingLotteryMedals = (p.medals || []).filter(med => med.startsWith("LOTTERY_WINNER:"));
         existingLotteryMedals.forEach(lotm => {
@@ -1034,10 +1040,14 @@ class DartosDB {
           }
         });
 
+        if (bourseMedal && !finalMedals.includes(bourseMedal)) {
+          finalMedals.push(bourseMedal);
+        }
+
         return {
           ...p,
           xpBefore: recalc.xpBefore,
-          xpEarned: recalc.xpEarned + lotteryBonus,
+          xpEarned: recalc.xpEarned + lotteryBonus + finalBourseBonus,
           medals: finalMedals
         };
       });
