@@ -272,8 +272,12 @@ export function calculateMatchResults(
   const matchXPs = matchPlayerIds.map(pid => getPlayerXPBefore(pid));
   const minMatchXP = matchXPs.length > 0 ? Math.min(...matchXPs) : 0;
 
+  let currentRank = 2;
   sortedLosers.forEach((loser, index) => {
-    const rank = index + 2;
+    if (index > 0 && loser.scoreLeft !== sortedLosers[index - 1].scoreLeft) {
+      currentRank = index + 2;
+    }
+    const rank = currentRank;
     let xp = config.xpSurvivorBase;
     const medals: string[] = [];
 
@@ -302,7 +306,7 @@ export function calculateMatchResults(
     // - si termine avec moins de 50pts
     const totalLosersInMatch = sortedLosers.length;
     const totalParticipantsCount = 1 + totalLosersInMatch;
-    const isDernierDeLaPartie = rank === totalLosersInMatch + 1;
+    const isDernierDeLaPartie = sortedLosers.length > 0 && loser.scoreLeft === sortedLosers[sortedLosers.length - 1].scoreLeft;
     const playerXPBefore = playerSeasonXPsBefore
       ? (playerSeasonXPsBefore.get(loser.playerId) ?? 0)
       : (loserCareerXPsBefore.get(loser.playerId) || 0);
